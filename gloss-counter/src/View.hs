@@ -10,7 +10,7 @@ view = return . viewPure
 
 viewPure :: MainState -> Picture
 viewPure (MMenu _) = undefined
-viewPure (MGame (GameState (World player entities) _ _ _)) 
+viewPure (MGame (GameState (World player entities _ _) _ _ _)) 
   = pictures (                                          
         ( map drawEntities entities)
     ++  [ drawEntities player]          
