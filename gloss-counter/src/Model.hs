@@ -70,25 +70,23 @@ newWorld :: World
 newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10) Player (20, 0-(y/2)) (30,30) 10 (0,0)
+playerEntity = Entity (Shooter 10) Player (20, negate (y/2)) (30,30) 10 (0,0)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30) Enemy (x, (y/2)) (10,10) 0 (0,0)
-  where 
+staticEnemy = Entity (Shooter 30) Enemy (x, y/2) (10,10) 0 (0,0)
+  where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30) Enemy (x, (y/2)) (10,10) (0 - initialScrollSpeed) (0,0)
-  where 
+aimingEnemy = Entity (Shooter 30) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
+  where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 enemyTypes :: [Entity]
-enemyTypes =    staticEnemy
-              : aimingEnemy
-              : []
+enemyTypes =    [staticEnemy, aimingEnemy]
 
 
 -- VARIABLES --
@@ -109,9 +107,9 @@ screenHeight = 576
 upperBound, lowerBound, leftBound, rightBound :: Float
 upperBound = y / 2
   where y = fromIntegral screenHeight :: Float
-lowerBound = 0 - (y/2)
+lowerBound = negate (y/2)
   where y = fromIntegral screenHeight :: Float
-leftBound = 0 - (x/2)
+leftBound = negate (x/2)
   where x = fromIntegral screenWidth :: Float
 rightBound = x / 2
   where x = fromIntegral screenWidth :: Float

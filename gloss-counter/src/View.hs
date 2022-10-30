@@ -10,23 +10,23 @@ view = return . viewPure
 
 viewPure :: MainState -> Picture
 viewPure (MMenu _) = undefined
-viewPure (MGame (GameState (World player entities _ _) _ _ _)) 
-  = pictures (                                          
-        ( map drawEntities entities)
-    ++  [ drawEntities player]          
+viewPure (MGame (GameState (World player entities _ _) _ _ _))
+  = pictures (
+        map drawEntities entities
+    ++  [ drawEntities player]
     )
 
 
 
-drawEntities :: Entity -> Picture        
+drawEntities :: Entity -> Picture
 --drawShips (ShipObject _ (locX,locY) width height colr) = translate locX locY $ Graphics.Gloss.color colr $ rectangleSolid width height
-drawEntities (Entity eType faction (locX,locY) (width, height) _ angle) 
+drawEntities (Entity eType faction (locX,locY) (width, height) _ angle)
   = translate locX locY $ Graphics.Gloss.color (drawColor eType faction) $ rectangleSolid width height
     where
       drawColor :: EntityType Float -> Faction -> Color
       drawColor (Bullet _) _ = yellow
       drawColor (Obstacle _) _ = blue
-      drawColor _ fac = case fac of 
+      drawColor _ fac = case fac of
                                   Player  -> green
                                   Enemy   -> red
                                   Neutral -> white

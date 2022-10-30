@@ -17,26 +17,26 @@ step secs mstate@(MGame (GameState world score elapsedTime keys))               
     do
       newWorld <- updateWorld world elapsedTime keys
       return $ MGame (GameState
-        newWorld 
+        newWorld
         score
         (elapsedTime + secs)
         keys)
 
 
 updateWorld :: World -> Float -> KeysOfInput -> IO World
-updateWorld (World player entities speed spawnIncrement) time keys = 
+updateWorld (World player entities speed spawnIncrement) time keys =
     do
       newEnemy <- spawnEnemy
-      return $ World 
-                (handlePlayer player keys) 
+      return $ World
+                (handlePlayer player keys)
                 (
-                      (if isShooting keys then (Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0)) : [] else []) ++
-                      (if time > spawnIncrement then (((newEnemy) : move)) else move)
+                      ([Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0) | isShooting keys]) ++
+                      (if time > spawnIncrement then newEnemy : move else move)
                 )
                 speed
                 (if time > spawnIncrement then time + spawnIncrement else spawnIncrement)     -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
       where
-        move = (movingEntities entities speed)
+        move = movingEntities entities speed
 
 
 
@@ -44,30 +44,30 @@ isShooting :: KeysOfInput -> Bool
 isShooting (Keys _ _ _ _ spaceIn) = spaceIn
 
 spawnEnemy :: IO Entity
-spawnEnemy = 
-    do 
+spawnEnemy =
+    do
       let amountOfEnemyTypes = length enemyTypes -1
       randomLocation  <- randomRIO(leftBound, rightBound) :: IO Float
       randomSelector  <- randomRIO(0, amountOfEnemyTypes) :: IO Int
       let randomEnemy = enemyTypes !! randomSelector
-      return $ randomEnemy {location = (randomLocation, upperBound)} 
+      return $ randomEnemy {location = (randomLocation, upperBound)}
 
 
 handlePlayer :: Entity -> KeysOfInput -> Entity
-handlePlayer player@(Entity etype faction loc hitbox speed angle) keys 
-  = Entity 
-      etype 
-      faction 
+handlePlayer player@(Entity etype faction loc hitbox speed angle) keys
+  = Entity
+      etype
+      faction
       (movingPlayer loc hitbox keys)         -- change location
-      hitbox 
-      speed 
-      angle 
+      hitbox
+      speed
+      angle
 
 
 
 
 movingPlayer :: Location -> Hitbox -> KeysOfInput -> Location
-movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)  
+movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)
   | wIn && not sIn && locY < (upperBound-height/2) = (locX, locY + playerSpeed)
   | sIn && not wIn && locY > (lowerBound+height/2) = (locX, locY - playerSpeed)
   | aIn && not dIn && locX > (leftBound+width/2) = (locX - playerSpeed, locY)
@@ -86,10 +86,10 @@ class Move a where      -- (Float, Float)
   (/\) , (\/), (~>), (<~) :: a -> Float -> a          -- /\ is up, \/ is down
 
 instance Move Entity where
-  entity /\ y = entity { location = (fst $ findEntity entity, (snd $ findEntity entity) + y) }
-  entity \/ y = entity { location = (fst $ findEntity entity, (snd $ findEntity entity) - y) }
-  entity ~> x = entity { location = ((fst $ findEntity entity) + x, snd $ findEntity entity) }
-  entity <~ x = entity { location = ((fst $ findEntity entity) - x, snd $ findEntity entity) }
+  entity /\ y = entity { location = (fst $ findEntity entity, snd (findEntity entity) + y) }
+  entity \/ y = entity { location = (fst $ findEntity entity, snd (findEntity entity) - y) }
+  entity ~> x = entity { location = (fst (findEntity entity) + x, snd $ findEntity entity) }
+  entity <~ x = entity { location = (fst (findEntity entity) - x, snd $ findEntity entity) }
 
 {-
 instance Move Location where
