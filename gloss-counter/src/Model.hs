@@ -22,6 +22,7 @@ data World = World  { player :: Entity
                     , entities :: [Entity]
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
+                    , playerShotInc :: Float
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -44,6 +45,7 @@ data Entity = Entity  { eType :: EntityType Float
 data EntityType a = Shooter a | Bullet a | Obstacle a
 
 data Faction = Player | Enemy | Neutral
+  deriving (Eq)
 
 type Location = (Float, Float)
 
@@ -60,14 +62,14 @@ emptyGame :: GameState
 emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
 
 emptyWorld :: World
-emptyWorld = World emptyEntity [] 0 9999
+emptyWorld = World emptyEntity [] 0 9999 0
 
 emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 (0,0)
 
 
 newWorld :: World
-newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement
+newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement playerShootIncrement
 
 playerEntity :: Entity
 playerEntity = Entity (Shooter 10) Player (20, negate (y/2)) (30,30) 10 (0,0)
@@ -98,6 +100,9 @@ initialScrollSpeed = 2
 
 initialSpawnIncrement :: Float
 initialSpawnIncrement = 2
+
+playerShootIncrement :: Float
+playerShootIncrement = 2
 
 --initializes the screen parameters. We might be able to fetch these based on the system later
 screenWidth, screenHeight :: Int
