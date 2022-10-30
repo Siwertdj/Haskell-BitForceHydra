@@ -19,7 +19,9 @@ data Menu = Menu {  options :: [String]
                  }
 
 data World = World  { player :: Entity
-                    , entities:: [Entity]
+                    , entities :: [Entity]
+                    , scrollSpeed :: Float
+                    , spawnIncrement :: Float
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -27,6 +29,7 @@ data KeysOfInput = Keys { keyPressedW :: Bool
                         , keyPressedA :: Bool
                         , keyPressedS :: Bool
                         , keyPressedD :: Bool
+                        , keyPressedSpace :: Bool
                         }
 
 data Entity = Entity  { eType :: EntityType Float
@@ -51,35 +54,52 @@ type Hitbox = (Float, Float)
 
 initialState :: MainState
 -- initialState = MMenu ( MenuState (menu-type) (game-type) )
-initialState = MGame (GameState newWorld 0 0 (Keys False False False False))
+initialState = MGame (GameState newWorld 0 0 (Keys False False False False False))
 
 emptyGame :: GameState
-emptyGame = GameState emptyWorld 0 0 (Keys False False False False)
+emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
 
 emptyWorld :: World
-emptyWorld = World emptyEntity [] 
+emptyWorld = World emptyEntity [] 0 9999
 
 emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 (0,0)
 
 
 newWorld :: World
-newWorld = World playerEntity []
+newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement
 
 playerEntity :: Entity
 playerEntity = Entity (Shooter 10) Player (20, 0-(y/2)) (30,30) 10 (0,0)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30) Enemy (x, (y/2)) (2,2) 0 (0,0)
+staticEnemy = Entity (Shooter 30) Enemy (x, (y/2)) (10,10) 0 (0,0)
   where 
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
+
+aimingEnemy :: Entity
+aimingEnemy = Entity (Shooter 30) Enemy (x, (y/2)) (10,10) (0 - initialScrollSpeed) (0,0)
+  where 
+    x = fromIntegral screenWidth :: Float
+    y = fromIntegral screenHeight :: Float
+
+enemyTypes :: [Entity]
+enemyTypes =    staticEnemy
+              : aimingEnemy
+              : []
 
 
 -- VARIABLES --
 playerSpeed :: Float
 playerSpeed = 5
+
+initialScrollSpeed :: Float
+initialScrollSpeed = 2
+
+initialSpawnIncrement :: Float
+initialSpawnIncrement = 2
 
 --initializes the screen parameters. We might be able to fetch these based on the system later
 screenWidth, screenHeight :: Int
