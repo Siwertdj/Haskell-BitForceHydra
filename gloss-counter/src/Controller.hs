@@ -30,13 +30,13 @@ updateWorld (World player entities speed spawnIncrement playerShotInc) time keys
       return $ World
                 (handlePlayer player keys)
                 ( ([Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys]) ++
-                  --([Entity (Bullet 1) Enemy (findEntity enemy) (1,1) (-10) (0,0) | enemy@(Entity _ fac _ _ _ _) <- move, fac == Enemy && spawnShootIncrement enemy (playerShotInc - time) keys]) ++
+                  --([Entity (Bullet 1) Enemy (findEntity enemy) (1,1) 10 (0,0) | enemy@(Entity _ fac _ _ _ _) <- move, fac == Enemy && spawnShootIncrement enemy (playerShotInc - time) keys]) ++
                   (if spawnShootIncrement newEnemy (spawnIncrement - time) keys then newEnemy : move else move)
                       
                 )
                 speed
-                (if time > spawnIncrement then time + spawnIncrement else spawnIncrement)     -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
-                (if isShooting keys (playerShotInc - time) then time + playerShotInc else playerShotInc)
+                (if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement)     -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
+                (if isShooting keys (playerShotInc - time) then time + playerShootIncrement else playerShotInc)
       where
         move = movingEntities entities speed
 
