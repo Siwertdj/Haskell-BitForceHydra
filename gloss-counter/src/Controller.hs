@@ -34,15 +34,15 @@ updateWorld (World player entities speed spawnIncrement) time keys =
                   handlePlayer (fst $ canShoot' player) keys
                 )
                 ( -- Update Entities --
+                  filter (not . isOutOfBounds)(
                   (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
                   ++
                   ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (canShoot' player)])
                   ++
                   ([Entity (Bullet 1) fac eLoc (10,10) 10 (0,0) | (enemy@(Entity _ fac eLoc _ _ _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
-                  
-                  -- remove all out-ofbounds entities with a filter-function  (over this entire update section)
+                  )
                 )
-                 (-- Update scrollspeed --
+                (-- Update scrollspeed --
                 speed
                 )
                 ( -- Update spawnIncrement -- 
@@ -85,12 +85,18 @@ movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)
   | dIn && not aIn && locX < (rightBound-width/2) = (locX + playerSpeed, locY)
   | otherwise = (locX, locY)
 
+-- check of entitiy een enemy is, zo ja, dan handle hun movement anders. 
+-- Sommigen bewegen zijwaarts, de speler volgend, anderen in een (bv) golfpatroon
 movingEntities :: [Entity] -> Float -> [Entity]
-movingEntities entities scrollSpeed = map (updatedEntities scrollSpeed) entities
+movingEntities entities scrollSpeed = map (moveEntities scrollSpeed) entities
 
-updatedEntities :: Float -> Entity -> Entity
-updatedEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle)
+moveEntities :: Float -> Entity -> Entity
+moveEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle)
   = (entity \/ scrollSpeed) \/ speed
+
+-- If out of bounds == True
+isOutOfBounds :: Entity -> Bool
+isOutOfBounds (Entity _ _ (x,y) _ _ _) = y < lowerBound || y > upperBound || x < leftBound || x > rightBound
 
 
 -- HANDLE SHOOTING --
@@ -113,6 +119,14 @@ shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang) time _ =
     then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang, True)
     else (e,False)
 shootTimer e _ _ = (e, False)
+
+
+
+
+-- Collision? --
+-- it must exclude itself out of the list before passing it to the function, otherwise collision is always there
+checkCollision :: Entity -> [Entities] -> Bool
+checkCollision = undefined
 
 
 
