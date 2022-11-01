@@ -22,7 +22,6 @@ data World = World  { player :: Entity
                     , entities :: [Entity]
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
-                    , playerShotInc :: Float
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -42,7 +41,7 @@ data Entity = Entity  { eType :: EntityType Float
                       -- , sprite :: Picture
                       }
 
-data EntityType a = Shooter a | Bullet a | Obstacle a
+data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a
 
 data Faction = Player | Enemy | Neutral
   deriving (Eq)
@@ -62,27 +61,27 @@ emptyGame :: GameState
 emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
 
 emptyWorld :: World
-emptyWorld = World emptyEntity [] 0 9999 0
+emptyWorld = World emptyEntity [] 0 9999 
 
 emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 (0,0)
 
 
 newWorld :: World
-newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement playerShootIncrement
+newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement 
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10) Player (20, negate (y/2)) (30,30) 10 (0,0)
+playerEntity = Entity (Shooter 10 (1,0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30) Enemy (x, y/2) (10,10) 0 (0,0)
+staticEnemy = Entity (Shooter 30 (2,0)) Enemy (x, y/2) (10,10) 0 (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float

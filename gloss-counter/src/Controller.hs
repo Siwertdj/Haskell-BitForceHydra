@@ -7,6 +7,7 @@ import Model
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import System.Random
+import Data.Data (ConstrRep(FloatConstr))
 
 -- | Handle one iteration of the game
 step :: Float -> MainState -> IO MainState
@@ -24,28 +25,27 @@ step secs mstate@(MGame (GameState world score elapsedTime keys))               
 
 
 updateWorld :: World -> Float -> KeysOfInput -> IO World
-updateWorld (World player entities speed spawnIncrement playerShotInc) time keys =
+updateWorld (World player entities speed spawnIncrement) time keys =
     do
       newEnemy <- spawnEnemy
       return $ World
-                (handlePlayer player keys)
-                ( ([Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys]) ++
-                  --([Entity (Bullet 1) Enemy (findEntity enemy) (1,1) 10 (0,0) | enemy@(Entity _ fac _ _ _ _) <- move, fac == Enemy && spawnShootIncrement enemy (playerShotInc - time) keys]) ++
+                (handlePlayer (fst $ foo player) keys)
+                ( ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (foo player)]) ++
+                  ([Entity (Bullet 1) Enemy (findEntity enemy) (1,1) 10 (0,0) | enemy@(Entity _ fac _ _ _ _) <- move, fac == Enemy && snd (shootTimer enemy time keys)]) ++
                   (if spawnShootIncrement newEnemy (spawnIncrement - time) keys then newEnemy : move else move)
                       
                 )
                 speed
                 (if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement)     -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
-                (if isShooting keys (playerShotInc - time) then time + playerShootIncrement else playerShotInc)
+                --(if isShooting keys (playerShotInc - time) then time + playerShootIncrement else playerShotInc)
       where
         move = movingEntities entities speed
+        foo a = shootTimer a time keys
 
                       --([Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys]) ++
                       --(if spawnShootIncrement newEnemy (spawnIncrement - time) keys then newEnemy : move else move) ++
                       --([Entity (Bullet 1) Enemy (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys])
 
-isShooting :: KeysOfInput -> Float ->  Bool
-isShooting (Keys _ _ _ _ spaceIn) time = spaceIn && time <= 0
 
 spawnEnemy :: IO Entity
 spawnEnemy =
@@ -85,12 +85,20 @@ move :: Float -> Entity -> Entity
 move scrollSpeed entity@(Entity eType faction location hitbox speed angle)
   = (entity \/ scrollSpeed) \/ speed
 
+
+isShooting :: KeysOfInput -> Float ->  Bool
+isShooting (Keys _ _ _ _ spaceIn) time = spaceIn && time <= 0
+
 spawnShootIncrement :: Entity -> Float -> KeysOfInput -> Bool
-spawnShootIncrement e@(Entity _ fac _ _ _ _) time keys = case fac of
-                                                  Player -> isShooting keys time
-                                                  Enemy -> time <= 0
+spawnShootIncrement e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time keys = case fac of
+                                                  Player -> isShooting keys (next - time)
+                                                  Enemy -> next - time <= 0
 
-
+shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
+shootTimer e@(Entity (Shooter hp (inc, next)) fac loc hb spd ang) time keys = 
+  if spawnShootIncrement e time keys 
+    then (Entity (Shooter hp (inc, next + inc)) fac loc hb spd ang, True)
+    else (e,False)
 
 class Move a where      -- (Float, Float) 
   (/\) , (\/), (~>), (<~) :: a -> Float -> a          -- /\ is up, \/ is down
