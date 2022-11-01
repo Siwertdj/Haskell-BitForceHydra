@@ -21,7 +21,8 @@ step secs mstate@(MGame (GameState world score elapsedTime keys))               
         newWorld
         score
         (elapsedTime + secs)
-        keys)
+        keys
+        )
 
 
 updateWorld :: World -> Float -> KeysOfInput -> IO World
@@ -29,22 +30,28 @@ updateWorld (World player entities speed spawnIncrement) time keys =
     do
       newEnemy <- spawnEnemy
       return $ World
-                (handlePlayer (fst $ foo player) keys)
-                ( ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (foo player)]) ++
-                  ([Entity (Bullet 1) Enemy (findEntity enemy) (1,1) 10 (0,0) | enemy@(Entity _ fac _ _ _ _) <- move, fac == Enemy && snd (shootTimer enemy time keys)]) ++
-                  (if spawnShootIncrement newEnemy (spawnIncrement - time) keys then newEnemy : move else move)
-                      
+                ( -- Update Player --
+                  handlePlayer (fst $ canShoot' player) keys
                 )
+                ( -- Update Entities --
+                  (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
+                  ++
+                  ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (canShoot' player)])
+                  ++
+                  ([Entity (Bullet 1) fac eLoc (10,10) 10 (0,0) | (enemy@(Entity _ fac eLoc _ _ _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  
+                  -- remove all out-ofbounds entities with a filter-function  (over this entire update section)
+                )
+                 (-- Update scrollspeed --
                 speed
-                (if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement)     -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
-                --(if isShooting keys (playerShotInc - time) then time + playerShootIncrement else playerShotInc)
+                )
+                ( -- Update spawnIncrement -- 
+                  if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
+                )     
       where
-        move = movingEntities entities speed
-        foo a = shootTimer a time keys
-
-                      --([Entity (Bullet 1) Player (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys]) ++
-                      --(if spawnShootIncrement newEnemy (spawnIncrement - time) keys then newEnemy : move else move) ++
-                      --([Entity (Bullet 1) Enemy (findEntity player) (1,1) (-10) (0,0) | spawnShootIncrement player (playerShotInc - time) keys])
+        canShoot' a = shootTimer a time keys
+        entitiesCanShoot = map canShoot' (movingEntities entities speed)
+        updatedEntities = map fst (entitiesCanShoot)
 
 
 spawnEnemy :: IO Entity
@@ -69,7 +76,7 @@ handlePlayer player@(Entity etype faction loc hitbox speed angle) keys
 
 
 
-
+-- HANDLE MOVING --
 movingPlayer :: Location -> Hitbox -> KeysOfInput -> Location
 movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)
   | wIn && not sIn && locY < (upperBound-height/2) = (locX, locY + playerSpeed)
@@ -79,26 +86,39 @@ movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)
   | otherwise = (locX, locY)
 
 movingEntities :: [Entity] -> Float -> [Entity]
-movingEntities entities scrollSpeed = map (move scrollSpeed) entities
+movingEntities entities scrollSpeed = map (updatedEntities scrollSpeed) entities
 
-move :: Float -> Entity -> Entity
-move scrollSpeed entity@(Entity eType faction location hitbox speed angle)
+updatedEntities :: Float -> Entity -> Entity
+updatedEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle)
   = (entity \/ scrollSpeed) \/ speed
 
 
-isShooting :: KeysOfInput -> Float ->  Bool
-isShooting (Keys _ _ _ _ spaceIn) time = spaceIn && time <= 0
+-- HANDLE SHOOTING --
+isShooting :: KeysOfInput -> Bool
+isShooting (Keys _ _ _ _ spaceIn) = spaceIn
 
-spawnShootIncrement :: Entity -> Float -> KeysOfInput -> Bool
-spawnShootIncrement e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time keys = case fac of
-                                                  Player -> isShooting keys (next - time)
-                                                  Enemy -> next - time <= 0
+canShoot :: Entity -> Float -> Bool
+canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time = case fac of
+                                                  Player  -> next - time <= 0
+                                                  Enemy   -> next - time <= 0
+                                                  _       -> False              -- Neutrals
 
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
-shootTimer e@(Entity (Shooter hp (inc, next)) fac loc hb spd ang) time keys = 
-  if spawnShootIncrement e time keys 
-    then (Entity (Shooter hp (inc, next + inc)) fac loc hb spd ang, True)
+shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang) time keys = 
+  if canShoot e time && isShooting keys
+    then (Entity (Shooter hp (inc, next + inc)) Player loc hb spd ang, True)
     else (e,False)
+shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang) time _ = 
+  if canShoot e time
+    then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang, True)
+    else (e,False)
+shootTimer e _ _ = (e, False)
+
+
+
+
+findEntity :: Entity -> Location
+findEntity (Entity _ _ loc _ _ _) = loc
 
 class Move a where      -- (Float, Float) 
   (/\) , (\/), (~>), (<~) :: a -> Float -> a          -- /\ is up, \/ is down
@@ -117,8 +137,6 @@ instance Move Location where
   location <~ x = toLocation (fst (fromLocation location) + y, snd (fromLocation location))
 -}
 
-findEntity :: Entity -> Location
-findEntity (Entity _ _ loc _ _ _) = loc
 
 --extractPlayer :: World -> Entity
 --extractPlayer (World p _ _ _) = p

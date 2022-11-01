@@ -71,11 +71,11 @@ newWorld :: World
 newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement 
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 (1,0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
+playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 (2,0)) Enemy (x, y/2) (10,10) 0 (0,0)
+staticEnemy = Entity (Shooter 30 ((1.5),0)) Enemy (x, y/2) (10,10) 0 (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
