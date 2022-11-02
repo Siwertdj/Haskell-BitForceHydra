@@ -41,17 +41,15 @@ updateWorld (World player entities speed spawnIncrement) time keys =
                   ++
                   ([Entity (Bullet 1) fac eLoc (10,10) 10 (0,0) | (enemy@(Entity _ fac eLoc _ _ _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
-                )
-                (-- Update scrollspeed --
+                )-- Update scrollspeed --
                 speed
-                )
                 ( -- Update spawnIncrement -- 
                   if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
-                )     
+                )
       where
         canShoot' a = shootTimer a time keys
         entitiesCanShoot = map canShoot' (movingEntities entities speed)
-        updatedEntities = map fst (entitiesCanShoot)
+        updatedEntities = map fst entitiesCanShoot
 
 
 spawnEnemy :: IO Entity
@@ -110,11 +108,11 @@ canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time = case fac of
                                                   _       -> False              -- Neutrals
 
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
-shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang) time keys = 
+shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang) time keys =
   if canShoot e time && isShooting keys
     then (Entity (Shooter hp (inc, next + inc)) Player loc hb spd ang, True)
     else (e,False)
-shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang) time _ = 
+shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang) time _ =
   if canShoot e time
     then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang, True)
     else (e,False)
@@ -125,7 +123,7 @@ shootTimer e _ _ = (e, False)
 
 -- Collision? --
 -- it must exclude itself out of the list before passing it to the function, otherwise collision is always there
-checkCollision :: Entity -> [Entities] -> Bool
+checkCollision :: Entity -> [Entity] -> Bool
 checkCollision = undefined
 
 
