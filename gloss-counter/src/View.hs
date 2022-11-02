@@ -20,7 +20,7 @@ viewPure (MGame (GameState (World player entities _ _ ) _ _ _))
 
 drawEntities :: Entity -> Picture
 --drawShips (ShipObject _ (locX,locY) width height colr) = translate locX locY $ Graphics.Gloss.color colr $ rectangleSolid width height
-drawEntities (Entity eType faction (locX,locY) (width, height) _ angle)
+drawEntities (Entity eType faction (locX,locY) (width, height) _ angle _)
   = translate locX locY $ Graphics.Gloss.color (drawColor eType faction) $ rectangleSolid width height
     where
       drawColor :: EntityType Float -> Faction -> Color

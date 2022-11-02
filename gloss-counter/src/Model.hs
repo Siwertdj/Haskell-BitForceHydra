@@ -37,7 +37,8 @@ data Entity = Entity  { eType :: EntityType Float
                       , location :: Location
                       , hitbox :: Hitbox
                       , speed :: Float
-                      , angle :: (Float, Float)
+                      , angle :: Float
+                      , movementPaternID :: Int -- -1 = Bullet or emptyEntity, 0 = Player, 1 = StaticEnemy, 2 = AimingEnemy
                       -- , sprite :: Picture
                       }
 
@@ -64,24 +65,24 @@ emptyWorld :: World
 emptyWorld = World emptyEntity [] 0 9999 
 
 emptyEntity :: Entity
-emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 (0,0)
+emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-1)
 
 
 newWorld :: World
 newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement 
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
+playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 0 0
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 ((1.5),0)) Enemy (x, y/2) (10,10) 0 (0,0)
+staticEnemy = Entity (Shooter 30 ((1.5),0)) Enemy (x, y/2) (10,10) 0 0 1
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) 0 2
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float

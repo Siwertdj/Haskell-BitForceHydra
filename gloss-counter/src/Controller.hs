@@ -37,9 +37,9 @@ updateWorld (World player entities speed spawnIncrement) time keys =
                   filter (not . isOutOfBounds)(
                   (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
                   ++
-                  ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (canShoot' player)])
+                  ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) 0 (-1) | snd (canShoot' player)])
                   ++
-                  ([Entity (Bullet 1) fac eLoc (10,10) 10 (0,0) | (enemy@(Entity _ fac eLoc _ _ _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  ([Entity (Bullet 1) fac eLoc (10,10) 10 angle (-1)| (enemy@(Entity _ fac eLoc _ _ angle _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
                 )-- Update scrollspeed --
                 speed
@@ -63,7 +63,7 @@ spawnEnemy =
 
 
 handlePlayer :: Entity -> KeysOfInput -> Entity
-handlePlayer player@(Entity etype faction loc hitbox speed angle) keys
+handlePlayer player@(Entity etype faction loc hitbox speed angle mID) keys
   = Entity
       etype
       faction
@@ -71,6 +71,7 @@ handlePlayer player@(Entity etype faction loc hitbox speed angle) keys
       hitbox
       speed
       angle
+      mID
 
 
 
@@ -89,12 +90,29 @@ movingEntities :: [Entity] -> Float -> [Entity]
 movingEntities entities scrollSpeed = map (moveEntities scrollSpeed) entities
 
 moveEntities :: Float -> Entity -> Entity
-moveEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle)
+moveEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle mID)
   = (entity \/ scrollSpeed) \/ speed
+
+
+changeAngle :: Entity -> Entity -> Entity
+changeAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) = Entity eType Enemy (ex,ey) hb spd newAngle 2
+ where distX = px - ex
+       distY = py - ey
+       newAngle = (atan (distX/distY) * 180 ) / pi
+changeAngle e@(Entity eType Enemy (ex,ey) hb spd angle 2) p@(Entity _ Player (px,py) _ _ _ _) = Entity eType Enemy (ex,ey) hb spd newAngle 2
+ where distX = px - ex
+       distY = py - ey
+       newAngle = (atan (distX/distY) * 180 ) / pi
+changeAngle e@(Entity _ Enemy _ _ _ _ _) p@(Entity _ Enemy _ _ _ _ _) = e
+
+allignToPlayer :: Entity -> Entity -> Entity
+allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 3) = Entity eType Enemy (px,ey) hb spd angle 3
+allignToPlayer e@(Entity eType Enemy (ex,ey) hb spd angle 3) p@(Entity _ Player (px,py) _ _ _ _) = Entity eType Enemy (px,ey) hb spd angle 3
+allignToPlayer e@(Entity _ Enemy _ _ _ _ _) p@(Entity _ Enemy _ _ _ _ _) = e
 
 -- If out of bounds == True
 isOutOfBounds :: Entity -> Bool
-isOutOfBounds (Entity _ _ (x,y) _ _ _) = y < lowerBound || y > upperBound || x < leftBound || x > rightBound
+isOutOfBounds (Entity _ _ (x,y) _ _ _ _) = y < lowerBound || y > upperBound || x < leftBound || x > rightBound
 
 
 -- HANDLE SHOOTING --
@@ -102,19 +120,19 @@ isShooting :: KeysOfInput -> Bool
 isShooting (Keys _ _ _ _ spaceIn) = spaceIn
 
 canShoot :: Entity -> Float -> Bool
-canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time = case fac of
+canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _ _) time = case fac of
                                                   Player  -> next - time <= 0
                                                   Enemy   -> next - time <= 0
                                                   _       -> False              -- Neutrals
 
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
-shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang) time keys =
+shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang mID) time keys =
   if canShoot e time && isShooting keys
-    then (Entity (Shooter hp (inc, next + inc)) Player loc hb spd ang, True)
+    then (Entity (Shooter hp (inc, next + inc)) Player loc hb spd ang mID, True)
     else (e,False)
-shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang) time _ =
+shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang mID) time _ =
   if canShoot e time
-    then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang, True)
+    then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang mID, True)
     else (e,False)
 shootTimer e _ _ = (e, False)
 
@@ -130,7 +148,7 @@ checkCollision = undefined
 
 
 findEntity :: Entity -> Location
-findEntity (Entity _ _ loc _ _ _) = loc
+findEntity (Entity _ _ loc _ _ _ _) = loc
 
 class Move a where      -- (Float, Float) 
   (/\) , (\/), (~>), (<~) :: a -> Float -> a          -- /\ is up, \/ is down
