@@ -40,8 +40,24 @@ data Entity = Entity  { eType :: EntityType Float
                       , angle :: (Float, Float)
                       -- , sprite :: Picture
                       }
+  --deriving (Eq a)
 
-data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a
+data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction
+--                          |      |  |              |            |
+--                          V      V  V              V            V
+--                      health   (increments)     damage        damage/health?
+
+{-
+instance Eq a => Eq Entity where
+  e1@(Entity eType1 fac1 loc1 hbox1 speed1 angle1) == e2@(Entity eType2 fac2 loc2 hbox2 speed2 angle2) =
+    eType1 == eType2 &&
+    fac1 == fac2 &&
+    loc1 == loc2 &&
+    hbox1 == hbox2 &&
+    speed1 == speed2 &&
+    angle1 == angle2
+-}
+
 
 data Faction = Player | Enemy | Neutral
   deriving (Eq)
@@ -75,13 +91,13 @@ playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 1
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 ((1.5),0)) Enemy (x, y/2) (10,10) 0 (0,0)
+staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (x, y/2) (20,20) 0 (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (30,30) (negate initialScrollSpeed) (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
@@ -98,7 +114,7 @@ initialScrollSpeed :: Float
 initialScrollSpeed = 2
 
 initialSpawnIncrement :: Float
-initialSpawnIncrement = 2
+initialSpawnIncrement = 5
 
 playerShootIncrement :: Float
 playerShootIncrement = 2

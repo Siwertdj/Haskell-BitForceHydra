@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 -- | This module defines how the state changes
 --   in response to time and user input
 module Controller where
@@ -8,6 +10,7 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import System.Random
 import Data.Data (ConstrRep(FloatConstr))
+import Data.List
 
 -- | Handle one iteration of the game
 step :: Float -> MainState -> IO MainState
@@ -34,12 +37,14 @@ updateWorld (World player entities speed spawnIncrement) time keys =
                   handlePlayer (fst $ canShoot' player) keys
                 )
                 ( -- Update Entities --
-                  filter (not . isOutOfBounds)(
+                  filter (not . isOutOfBounds) $ filter (not.isDestroyed) ( 
+                  (
                   (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
                   ++
                   ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) (0,0) | snd (canShoot' player)])
                   ++
                   ([Entity (Bullet 1) fac eLoc (10,10) 10 (0,0) | (enemy@(Entity _ fac eLoc _ _ _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  )
                   )
                 )
                 (-- Update scrollspeed --
@@ -108,6 +113,7 @@ canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _) time = case fac of
                                                   Player  -> next - time <= 0
                                                   Enemy   -> next - time <= 0
                                                   _       -> False              -- Neutrals
+canShoot _ _ = False
 
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
 shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang) time keys = 
@@ -123,13 +129,62 @@ shootTimer e _ _ = (e, False)
 
 
 
--- Collision? --
+-- Collision --
 -- it must exclude itself out of the list before passing it to the function, otherwise collision is always there
-checkCollision :: Entity -> [Entities] -> Bool
-checkCollision = undefined
+collision :: [Entity] -> [Entity]
+collision entities = [ collideWithAll e (excludeSubject n entities) | e <- entities, n <- [0..(length entities -1)]]
+  where 
+    excludeSubject :: Int -> [a] -> [a]
+    excludeSubject n xs = take (n-1) xs ++ (drop n xs)
 
 
 
+collideWithAll :: Entity -> [Entity] -> Entity
+--each entity is checked against all others, at each step. Result contains 'Maybes', which we extract elsewhere
+collideWithAll entity = foldr f v
+  where
+    v = entity
+    f x a = case x of
+              (Entity Destruction _ _ _ _ _)               -> x
+              _  -> handleCollision x a
+
+
+
+--changes this entity's health, or returns 'Nothing' if health is expired or has none
+handleCollision :: Entity -> Entity -> Entity
+handleCollision e1@(Entity (Shooter health _) fac loc hbox speed angle) e2@(Entity (Shooter _ _) _ _ _ _ _)      -- Two shooters destroy eachother
+  = if checkCollision e1 e2 then destroyEntity e1 else  e1
+handleCollision e1@(Entity (Shooter health incs) fac loc hbox speed angle) e2@(Entity (Bullet damage) _ _ _ _ _)  -- Bullet reduces health of shooter
+  = if checkCollision e1 e2 then 
+      if health - damage <= 0 then destroyEntity e1 else Entity (Shooter (health - damage) incs) fac loc hbox speed angle        
+      else e1
+handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle) e2@(Entity (Bullet damage2) _ _ _ _ _)   -- Stronger bullet survives, otherwise both are destroyed
+  = if checkCollision e1 e2 then
+      if damage1 > damage2 then e1 else destroyEntity e1
+      else e1
+handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle) e2@(Entity (Shooter _ _) _ _ _ _ _)      -- Bullet is removed when it hits a Player
+  = if checkCollision e1 e2 then destroyEntity e1 else e1
+handleCollision e1 _ = e1
+
+destroyEntity :: Entity -> Entity
+destroyEntity (Entity _ _ loc hbox _ _) = Entity Destruction Neutral loc hbox 0 (0, 0)
+
+isDestroyed :: Entity -> Bool
+isDestroyed (Entity Destruction _ _ _ _ _) = True
+isDestroyed _ = False
+
+-- This is very simplistic at the moment, but as long as entities are just squares, it will work fine
+checkCollision :: Entity -> Entity -> Bool
+checkCollision e1@(Entity type1 fac1 (x1,y1) (w1,h1) speed1 angle1) e2@(Entity typ2e fac2 (x2,y2) (w2,h2) speed2 angle2) 
+  | fac1 /= fac2  = (checkDistance (findEntity e1) (findEntity e2) <= max (w1+w2) (h1+h2))  --if not the same faction and hit =True
+  | otherwise     = False                                                                   --if the same faction, always =False
+
+checkDistance :: Location -> Location -> Float
+checkDistance (x1,y1) (x2,y2) = sqrt( (x2-x1)**2 + (y2-y1)**2)
+
+
+
+--(Entity type fac loc hbox speed angle)
 
 findEntity :: Entity -> Location
 findEntity (Entity _ _ loc _ _ _) = loc

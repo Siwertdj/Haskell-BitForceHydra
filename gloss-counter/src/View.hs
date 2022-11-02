@@ -26,6 +26,7 @@ drawEntities (Entity eType faction (locX,locY) (width, height) _ angle)
       drawColor :: EntityType Float -> Faction -> Color
       drawColor (Bullet _) _ = yellow
       drawColor (Obstacle _) _ = blue
+      drawColor Destruction _ = orange
       drawColor _ fac = case fac of
                                   Player  -> green
                                   Enemy   -> red
