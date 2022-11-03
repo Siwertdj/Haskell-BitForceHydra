@@ -22,6 +22,7 @@ data World = World  { player :: Entity
                     , entities :: [Entity]
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
+                    , overlay :: String
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -41,11 +42,31 @@ data Entity = Entity  { eType :: EntityType Float
                       , movementPaternID :: Int -- -1 = Bullet or emptyEntity, 0 = Player, 1 = StaticEnemy, 2 = AimingEnemy
                       -- , sprite :: Picture
                       }
+  --deriving (Eq a)
 
-data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a
+data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction
+--                          |      |  |              |            |
+--                          V      V  V              V            V
+--                      health   (increments)     damage        damage/health?
+
+{-
+instance Eq a => Eq Entity where
+  e1@(Entity eType1 fac1 loc1 hbox1 speed1 angle1) == e2@(Entity eType2 fac2 loc2 hbox2 speed2 angle2) =
+    eType1 == eType2 &&
+    fac1 == fac2 &&
+    loc1 == loc2 &&
+    hbox1 == hbox2 &&
+    speed1 == speed2 &&
+    angle1 == angle2
+
+
+instance Eq Faction where
+  fac1 == fac2 = Player == Player || Enemy == Enemy || Neutral == Neutral
+  fac1 /= fac2 = Player == Enemy || Player == Neutral || Enemy == Neutral
+-}
 
 data Faction = Player | Enemy | Neutral
-  deriving (Eq)
+  deriving Eq
 
 type Location = (Float, Float)
 
@@ -62,14 +83,14 @@ emptyGame :: GameState
 emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
 
 emptyWorld :: World
-emptyWorld = World emptyEntity [] 0 9999 
+emptyWorld = World emptyEntity [] 0 9999 ""
 
 emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-1)
 
 
 newWorld :: World
-newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement 
+newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement ""
 
 playerEntity :: Entity
 playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 0 0
@@ -99,7 +120,7 @@ initialScrollSpeed :: Float
 initialScrollSpeed = 2
 
 initialSpawnIncrement :: Float
-initialSpawnIncrement = 2
+initialSpawnIncrement = 5
 
 playerShootIncrement :: Float
 playerShootIncrement = 2
