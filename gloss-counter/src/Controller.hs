@@ -122,8 +122,10 @@ changeBulletAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity( Bullet hp) Enem
 changeBulletAngle p e = e
 
 allignToPlayer :: Entity -> Entity -> Entity
-allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) =
-  Entity eType Enemy (px,ey) hb spd angle 2
+allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) 
+  | px > ex - spd = Entity eType Enemy (ex - spd,ey) hb spd angle 2
+  | px < ex + spd = Entity eType Enemy (ex + spd,ey) hb spd angle 2
+  | otherwise = e
 allignToPlayer p e = e
 
 -- If out of bounds == True
