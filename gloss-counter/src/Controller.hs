@@ -47,9 +47,9 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                   ++
                   ([Entity (Bullet 1) fac eLoc (10,10) 10 angle (-1)| (enemy@(Entity _ fac eLoc _ _ angle _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
-                  )
                 )
-                (-- Update scrollspeed --
+                
+                -- Update scrollspeed --
                 speed
                 ( -- Update spawnIncrement -- 
                   if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
@@ -171,31 +171,31 @@ collideWithAll entity = foldr f v
   where
     v = entity
     f x a = case a of
-              (Entity Destruction _ _ _ _ _)  -> a                    -- if its already destroyed you dont need to handle collision anymore
+              (Entity Destruction _ _ _ _ _ _)  -> a                    -- if its already destroyed you dont need to handle collision anymore
               _                               -> if checkCollision a x then handleCollision a x else a
 
 --changes this entity's health, or returns 'Nothing' if health is expired or has none
 handleCollision :: Entity -> Entity -> Entity
-handleCollision e1@(Entity (Shooter health _) _ _ _ _ _) e2@(Entity (Shooter _ _) _ _ _ _ _)      -- Two shooters destroy eachother
+handleCollision e1@(Entity (Shooter health _) _ _ _ _ _ _) e2@(Entity (Shooter _ _) _ _ _ _ _ _)      -- Two shooters destroy eachother
   = destroyEntity e1
-handleCollision e1@(Entity (Shooter health incs) fac loc hbox speed angle) e2@(Entity (Bullet damage) _ _ _ _ _)  -- Bullet reduces health of shooter
-  = if health - damage <= 0 then destroyEntity e1 else Entity (Shooter (health - damage) incs) fac loc hbox speed angle
-handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle) e2@(Entity (Bullet damage2) _ _ _ _ _)   -- Stronger bullet survives, otherwise both are destroyed
+handleCollision e1@(Entity (Shooter health incs) fac loc hbox speed angle mID) e2@(Entity (Bullet damage) _ _ _ _ _ _)  -- Bullet reduces health of shooter
+  = if health - damage <= 0 then destroyEntity e1 else Entity (Shooter (health - damage) incs) fac loc hbox speed angle mID
+handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle mID) e2@(Entity (Bullet damage2) _ _ _ _ _ _)   -- Stronger bullet survives, otherwise both are destroyed
   = destroyEntity e1--if damage1 > damage2 then e1 else destroyEntity e1
-handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle) e2@(Entity (Shooter _ _) _ _ _ _ _)      -- Bullet is removed when it hits a Player
+handleCollision e1@(Entity (Bullet damage1) fac loc hbox speed angle mID) e2@(Entity (Shooter _ _) _ _ _ _ _ _)      -- Bullet is removed when it hits a Player
   = destroyEntity e1
 handleCollision e1 _ = e1
 
 destroyEntity :: Entity -> Entity
-destroyEntity (Entity _ _ loc hbox _ _) = Entity Destruction Neutral loc hbox 0 (0, 0)
+destroyEntity (Entity _ _ loc hbox _ _ _) = Entity Destruction Neutral loc hbox 0 0 (-2)
 
 isDestroyed :: Entity -> Bool
-isDestroyed (Entity Destruction _ _ _ _ _) = True
+isDestroyed (Entity Destruction _ _ _ _ _ _) = True
 isDestroyed _ = False
 
 -- This is very simplistic at the moment, but as long as entities are just squares, it will work fine
 checkCollision :: Entity -> Entity -> Bool
-checkCollision e1@(Entity type1 fac1 loc1 (w1,h1) speed1 angle1) e2@(Entity type2 fac2 loc2 (w2,h2) speed2 angle2)
+checkCollision e1@(Entity type1 fac1 loc1 (w1,h1) speed1 angle1 mID1) e2@(Entity type2 fac2 loc2 (w2,h2) speed2 angle2 mID2)
   | fac1 == fac2 = False
   | otherwise  = (checkDistance loc1 loc2 <= max (w1+w2) (h1+h2))  --if not the same faction and hit =True
   
@@ -214,28 +214,28 @@ findEntity (Entity _ _ loc _ _ _ _) = loc
 
 -- Debugging functions--
 getEntityType :: Entity -> EntityType Float 
-getEntityType (Entity etype _ _ _ _ _) = etype
+getEntityType (Entity etype _ _ _ _ _ _) = etype
 
 isOfEType :: EntityType Float -> Entity -> Bool
-isOfEType (Shooter _ _) (Entity etype2 _ _ _ _ _) = case etype2 of
+isOfEType (Shooter _ _) (Entity etype2 _ _ _ _ _ _) = case etype2 of
   Shooter _ _ -> True
   _ -> False
-isOfEType (Bullet _) (Entity etype2 _ _ _ _ _) = case etype2 of
+isOfEType (Bullet _) (Entity etype2 _ _ _ _ _ _) = case etype2 of
   Bullet _ -> True
   _ -> False
-isOfEType (Obstacle _) (Entity etype2 _ _ _ _ _) = case etype2 of
+isOfEType (Obstacle _) (Entity etype2 _ _ _ _ _ _) = case etype2 of
   Obstacle _ -> True
   _ -> False
-isOfEType (Destruction) (Entity etype2 _ _ _ _ _) = case etype2 of
+isOfEType (Destruction) (Entity etype2 _ _ _ _ _ _) = case etype2 of
   Destruction -> True
   _ -> False
 
 getPlayerStatus :: Entity -> String
-getPlayerStatus (Entity (Shooter h _) Player _ _ _ _) = "Health: " ++ show h
-getPlayerStatus (Entity (Shooter h _) Enemy _ _ _ _) = "is enemy"
-getPlayerStatus (Entity (Bullet _) Player _ _ _ _) = "Is friendly bullet"
-getPlayerStatus (Entity (Bullet _) Enemy _ _ _ _) = "Is enemy bullet"
-getPlayerStatus (Entity (Destruction) _ _ _ _ _) = "Dead"
+getPlayerStatus (Entity (Shooter h _) Player _ _ _ _ _) = "Health: " ++ show h
+getPlayerStatus (Entity (Shooter h _) Enemy _ _ _ _ _) = "is enemy"
+getPlayerStatus (Entity (Bullet _) Player _ _ _ _ _) = "Is friendly bullet"
+getPlayerStatus (Entity (Bullet _) Enemy _ _ _ _ _) = "Is enemy bullet"
+getPlayerStatus (Entity (Destruction) _ _ _ _ _ _) = "Dead"
 getPlayerStatus _ = "error?"
 
 

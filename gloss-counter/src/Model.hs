@@ -39,7 +39,7 @@ data Entity = Entity  { eType :: EntityType Float
                       , hitbox :: Hitbox
                       , speed :: Float
                       , angle :: Float
-                      , movementPaternID :: Int -- -1 = Bullet or emptyEntity, 0 = Player, 1 = StaticEnemy, 2 = AimingEnemy
+                      , movementPaternID :: Int -- -2 = destroyed or emptyEntity, -1 = Bullet, 0 = Player, 1 = StaticEnemy, 2 = AimingEnemy
                       -- , sprite :: Picture
                       }
   --deriving (Eq a)
@@ -86,7 +86,7 @@ emptyWorld :: World
 emptyWorld = World emptyEntity [] 0 9999 ""
 
 emptyEntity :: Entity
-emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-1)
+emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-2)
 
 
 newWorld :: World
