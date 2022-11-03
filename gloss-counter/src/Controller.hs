@@ -8,6 +8,7 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import System.Random
 import Data.Data (ConstrRep(FloatConstr))
+import Graphics.Gloss.Geometry.Angle (radToDeg, normalizeAngle)
 
 -- | Handle one iteration of the game
 step :: Float -> MainState -> IO MainState
@@ -34,7 +35,7 @@ updateWorld (World player entities speed spawnIncrement) time keys =
                   handlePlayer (fst $ canShoot' player) keys
                 )
                 ( -- Update Entities --
-                  filter (not . isOutOfBounds)(
+                   map (allignToPlayer player) $ filter (not . isOutOfBounds)(
                   (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
                   ++
                   ([Entity (Bullet 1) Player (findEntity player) (10,10) (-10) 0 (-1) | snd (canShoot' player)])
@@ -94,21 +95,19 @@ moveEntities scrollSpeed entity@(Entity eType faction location hitbox speed angl
   = (entity \/ scrollSpeed) \/ speed
 
 
-changeAngle :: Entity -> Entity -> Entity
-changeAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) = Entity eType Enemy (ex,ey) hb spd newAngle 2
+changeBulletAngle :: Entity -> Entity -> Entity
+changeBulletAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity( Bullet hp) Enemy (ex,ey) hb spd angle (-1)) =
+  Entity(Bullet hp) Enemy (ex,ey) hb spd newAngle (-1)
  where distX = px - ex
        distY = py - ey
-       newAngle = (atan (distX/distY) * 180 ) / pi
-changeAngle e@(Entity eType Enemy (ex,ey) hb spd angle 2) p@(Entity _ Player (px,py) _ _ _ _) = Entity eType Enemy (ex,ey) hb spd newAngle 2
- where distX = px - ex
-       distY = py - ey
-       newAngle = (atan (distX/distY) * 180 ) / pi
-changeAngle e@(Entity _ Enemy _ _ _ _ _) p@(Entity _ Enemy _ _ _ _ _) = e
+       newAngle = radToDeg nAngle
+       nAngle = normalizeAngle (atan (distX/distY))
+changeBulletAngle p e = e
 
 allignToPlayer :: Entity -> Entity -> Entity
-allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 3) = Entity eType Enemy (px,ey) hb spd angle 3
-allignToPlayer e@(Entity eType Enemy (ex,ey) hb spd angle 3) p@(Entity _ Player (px,py) _ _ _ _) = Entity eType Enemy (px,ey) hb spd angle 3
-allignToPlayer e@(Entity _ Enemy _ _ _ _ _) p@(Entity _ Enemy _ _ _ _ _) = e
+allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) =
+  Entity eType Enemy (px,ey) hb spd angle 2
+allignToPlayer p e = e
 
 -- If out of bounds == True
 isOutOfBounds :: Entity -> Bool
