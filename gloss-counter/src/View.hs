@@ -10,12 +10,15 @@ view = return . viewPure
 
 viewPure :: MainState -> Picture
 viewPure (MMenu _) = undefined
-viewPure (MGame (GameState (World player entities _ _ ) _ _ _))
+viewPure (MGame (GameState (World player entities _ _ text ) _ _ _))
   = pictures (
         map drawEntities entities
     ++  [ drawEntities player]
+    ++  [viewText text]
     )
 
+viewText :: String -> Picture
+viewText cs =  translate leftBound 0 $ Graphics.Gloss.color white $ scale 0.2 0.2 $ text (show cs)
 
 
 drawEntities :: Entity -> Picture
@@ -26,7 +29,7 @@ drawEntities (Entity eType faction (locX,locY) (width, height) _ angle)
       drawColor :: EntityType Float -> Faction -> Color
       drawColor (Bullet _) _ = yellow
       drawColor (Obstacle _) _ = blue
-      drawColor Destruction _ = orange
+      drawColor Destruction _ = orange              --does this work properly?
       drawColor _ fac = case fac of
                                   Player  -> green
                                   Enemy   -> red

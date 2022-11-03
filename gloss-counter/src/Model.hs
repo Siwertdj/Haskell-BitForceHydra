@@ -22,6 +22,7 @@ data World = World  { player :: Entity
                     , entities :: [Entity]
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
+                    , overlay :: String
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -56,11 +57,15 @@ instance Eq a => Eq Entity where
     hbox1 == hbox2 &&
     speed1 == speed2 &&
     angle1 == angle2
+
+
+instance Eq Faction where
+  fac1 == fac2 = Player == Player || Enemy == Enemy || Neutral == Neutral
+  fac1 /= fac2 = Player == Enemy || Player == Neutral || Enemy == Neutral
 -}
 
-
 data Faction = Player | Enemy | Neutral
-  deriving (Eq)
+  deriving Eq
 
 type Location = (Float, Float)
 
@@ -77,27 +82,27 @@ emptyGame :: GameState
 emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
 
 emptyWorld :: World
-emptyWorld = World emptyEntity [] 0 9999 
+emptyWorld = World emptyEntity [] 0 9999 ""
 
 emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 (0,0)
 
 
 newWorld :: World
-newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement 
+newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement ""
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
+playerEntity = Entity (Shooter 10 (0.5,0)) Player (20, negate (y/2)) (30,30) 10 (0,0)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (x, y/2) (20,20) 0 (0,0)
+staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (x, y/2) (10,10) 0 (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (30,30) (negate initialScrollSpeed) (0,0)
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) (0,0)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
