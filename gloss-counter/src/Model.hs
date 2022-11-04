@@ -35,15 +35,19 @@ data KeysOfInput = Keys { keyPressedW :: Bool
 
 data Entity = Entity  { eType :: EntityType Float
                       , faction :: Faction
-                      , location :: Location
                       , hitbox :: Hitbox
-                      , speed :: Float
-                      , angle :: Float
-                      , movementPaternID :: Int -- -2 = destroyed or emptyEntity, -1 = Bullet, 0 = Player, 1 = StaticEnemy, 2 = AimingEnemy
+                      , movement :: Movement
                       -- , sprite :: Picture
                       }
   --deriving (Eq a)
 
+data Movement = Movement {
+                          location :: Location,
+                          speed :: Float, 
+                          angle :: Float, 
+                          movementPaternID :: Int, 
+                          moveWithWorld :: Bool
+                         }
 data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction
 --                          |      |  |              |            |
 --                          V      V  V              V            V
@@ -86,14 +90,14 @@ emptyWorld :: World
 emptyWorld = World emptyEntity [] 0 9999 ""
 
 emptyEntity :: Entity
-emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-2)
+emptyEntity = Entity (Obstacle 1) Neutral (0,0) (Movement (0,0) 0 0 (-2) False)
 
 
 newWorld :: World
 newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement ""
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 0 0
+playerEntity = Entity (Shooter 10 ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 0 False)
   where y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
