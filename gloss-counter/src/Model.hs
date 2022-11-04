@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Use list literal" #-}
 -- | This module contains the data types
 --   which represent the state of the game
 module Model where
@@ -7,22 +10,29 @@ data MainState = MGame GameState | MMenu MenuState
 data GameState = GameState {  world :: World
                             , score :: Int
                             , elapsedTime :: Float
-                            , keys :: KeysOfInput
+                            , gameKeys :: KeysOfInput
                            }
 
 data MenuState = MenuState {  menu :: Menu
                             , game :: GameState
+                            , menuKeys :: KeysOfInput
+                            , inputDelay :: Float
                            }
 
-data Menu = Menu {  options :: [String]
-                 -- , selectPointer
+data Menu = Menu {  options :: [MenuOption]
+                  , selectPointer :: Int
                  }
+
+data MenuOption = MenuOption {  optionText :: String
+                              , index :: Int
+                              , nextState :: MainState
+                             }
 
 data World = World  { player :: Entity
                     , entities :: [Entity]
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
-                    , overlay :: String
+                    , overlay :: String          -- for debugging during the game, at the moment.
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -30,6 +40,7 @@ data KeysOfInput = Keys { keyPressedW :: Bool
                         , keyPressedA :: Bool
                         , keyPressedS :: Bool
                         , keyPressedD :: Bool
+                        , keyPressedP :: Bool
                         , keyPressedSpace :: Bool
                         }
 
@@ -49,22 +60,6 @@ data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destructio
 --                          V      V  V              V            V
 --                      health   (increments)     damage        damage/health?
 
-{-
-instance Eq a => Eq Entity where
-  e1@(Entity eType1 fac1 loc1 hbox1 speed1 angle1) == e2@(Entity eType2 fac2 loc2 hbox2 speed2 angle2) =
-    eType1 == eType2 &&
-    fac1 == fac2 &&
-    loc1 == loc2 &&
-    hbox1 == hbox2 &&
-    speed1 == speed2 &&
-    angle1 == angle2
-
-
-instance Eq Faction where
-  fac1 == fac2 = Player == Player || Enemy == Enemy || Neutral == Neutral
-  fac1 /= fac2 = Player == Enemy || Player == Neutral || Enemy == Neutral
--}
-
 data Faction = Player | Enemy | Neutral
   deriving Eq
 
@@ -74,30 +69,69 @@ type Hitbox = (Float, Float)
 
 
 --  INITIALISED DATA --
-
 initialState :: MainState
--- initialState = MMenu ( MenuState (menu-type) (game-type) )
-initialState = MGame (GameState newWorld 0 0 (Keys False False False False False))
+initialState = MMenu mainMenu
+-- initialState = MGame (GameState newWorld 0 0 (Keys False False False False False))
+
+emptyKeys :: KeysOfInput
+emptyKeys = (Keys False False False False False False)
+
+menuInputDelay :: Float
+menuInputDelay = 0.5
+
+-- INITIALISED MENUS --
+mainMenu :: MenuState
+mainMenu = MenuState  ( Menu
+                        ( (MenuOption "New Game" 1 (MGame newGame)) 
+                        : (MenuOption "Continue Game" 2 (MGame newGame))
+                        : (MenuOption "Quit Game" 3 (MGame newGame))
+                        : [])
+                        1    -- Index starts at 1
+                      ) 
+                      emptyGame
+                      emptyKeys
+                      menuInputDelay
+
+pauseMenu :: MenuState
+pauseMenu = MenuState  ( Menu
+                        ( (MenuOption "Continue Game" 1 (MGame emptyGame)) 
+                        : (MenuOption "Reset Game" 2 (MGame newGame))
+                        : (MenuOption "Main Menu" 3 (MMenu mainMenu))
+                        : [])
+                        1    -- Index starts at 1
+                      ) 
+                      emptyGame
+                      emptyKeys
+                      menuInputDelay
+
+-- INITIALISED GAMESTATES/WORLDS --
+newGame :: GameState
+newGame = GameState newWorld 0 0 emptyKeys
 
 emptyGame :: GameState
-emptyGame = GameState emptyWorld 0 0 (Keys False False False False False )
+emptyGame = GameState emptyWorld 0 0 emptyKeys
 
 emptyWorld :: World
 emptyWorld = World emptyEntity [] 0 9999 ""
 
-emptyEntity :: Entity
-emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-2)
-
-
 newWorld :: World
 newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement ""
 
+
+-- INITIALISED ENTITIES --
+emptyEntity :: Entity
+emptyEntity = Entity (Obstacle 1) Neutral (0, 0) (0,0) 0 0 (-2)
+
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (20, negate (y/2)) (30,30) 10 0 0
+playerEntity = Entity (Shooter 10 (0.5,0)) Player (20, negate (y/2)) (30,30) 10 0 0
   where y = fromIntegral screenHeight :: Float
 
+
+enemyTypes :: [Entity]
+enemyTypes =    [staticEnemy, aimingEnemy]
+
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 ((1.5),0)) Enemy (x, y/2) (10,10) 0 0 1
+staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (x, y/2) (10,10) 0 0 1
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
@@ -108,8 +142,9 @@ aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialSc
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
-enemyTypes :: [Entity]
-enemyTypes =    [staticEnemy, aimingEnemy]
+
+
+
 
 
 -- VARIABLES --
@@ -124,6 +159,12 @@ initialSpawnIncrement = 5
 
 playerShootIncrement :: Float
 playerShootIncrement = 2
+
+
+
+
+
+
 
 --initializes the screen parameters. We might be able to fetch these based on the system later
 screenWidth, screenHeight :: Int

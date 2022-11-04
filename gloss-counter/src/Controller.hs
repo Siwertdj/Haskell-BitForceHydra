@@ -15,19 +15,78 @@ import Graphics.Gloss.Geometry.Angle (radToDeg, normalizeAngle)
 
 -- | Handle one iteration of the game
 step :: Float -> MainState -> IO MainState
-step _ mstate@(MMenu (MenuState menu emptyGame))                                   --  IS IN MENU
-  = return mstate
-step secs mstate@(MGame (GameState world score elapsedTime keys))                  --  IS IN GAME
-  = -- Just update the elapsed time
-    do
-      newWorld <- updateWorld world elapsedTime keys
-      return $ MGame (GameState
-        newWorld
-        score
-        (elapsedTime + secs)
-        keys
-        )
+step secs mstate@(MMenu (MenuState mNav@(Menu options index) gameState keys@(Keys _ _ _ _ _ space) inputDelay))                                   --  IS IN MENU
+  = if space
+      then  return $ confirmMenuOption $ options !!  (index-1)
+      else  return $ MMenu (MenuState
+              (navigateMenu mNav keys (True))
+              gameState
+              keys
+              inputDelay
+              )
+step secs mstate@(MGame gstate@(GameState world score elapsedTime keys@(Keys _ _ _ _ pIn _)))                  --  IS IN GAME
+  = if pIn 
+      then return $ MMenu $ 
+        (storeGameState 
+          (pauseMenu {menu = (changeMenuOption (getMenu pauseMenu)  1 (setOptionNextState) 
+                              (MGame gstate {gameKeys = (keys {keyPressedP = False})}) )}) 
+          gstate
+        )          
+      else do 
+        newWorld <- updateWorld world elapsedTime keys
+        return $ MGame (GameState
+          newWorld
+          score
+          (elapsedTime + secs)
+          keys
+          )
 
+
+{-__  __                     __                  _   _                 
+ |  \/  |                   / _|                | | (_)                
+ | \  / | ___ _ __  _   _  | |_ _   _ _ __   ___| |_ _  ___  _ __  ___ 
+ | |\/| |/ _ \ '_ \| | | | |  _| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+ | |  | |  __/ | | | |_| | | | | |_| | | | | (__| |_| | (_) | | | \__ \
+ |_|  |_|\___|_| |_|\__,_| |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/-}
+
+navigateMenu :: Menu -> KeysOfInput -> Bool -> Menu
+navigateMenu (Menu ops index) (Keys wIn _ sIn _ _ spaceIn) able | able && wIn && (not sIn)  = (Menu ops ({-cycleNavigation $-} index-1))
+                                                              | able && sIn && not wIn    = (Menu ops ({-cycleNavigation $-} index+1))
+                                                              | otherwise = (Menu ops index)
+                                                                  where 
+                                                                    navigationLength = length ops
+                                                                    cycleNavigation :: Int -> Int
+                                                                    cycleNavigation n | n > navigationLength = 1
+                                                                                      | n < navigationLength = navigationLength
+                                                                                      | otherwise = n
+
+confirmMenuOption :: MenuOption -> MainState
+confirmMenuOption (MenuOption _ _ next) = next
+
+getMenu :: MenuState -> Menu
+getMenu (MenuState menu _ _ _) = menu
+
+changeMenuOption :: Menu -> Int -> (MenuOption -> MainState -> MenuOption) -> MainState -> Menu
+changeMenuOption (Menu options i) index f newState = Menu (addInbetween  (f (options !! index) newState)) i
+  where 
+    splitList options = splitAt index options
+    addInbetween a = (take (index-1) (fst $ splitList options)) ++  [a] ++ (snd $ splitList options)
+  
+setOptionNextState :: MenuOption -> MainState -> MenuOption
+setOptionNextState option mainState = (option {nextState = mainState})
+
+storeGameState :: MenuState -> GameState -> MenuState
+storeGameState menuState currentGame = (menuState {game = currentGame})
+
+
+
+
+{- _____                         __                  _   _                 
+  / ____|                       / _|                | | (_)                
+ | |  __  __ _ _ __ ___   ___  | |_ _   _ _ __   ___| |_ _  ___  _ __  ___ 
+ | | |_ |/ _` | '_ ` _ \ / _ \ |  _| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+ | |__| | (_| | | | | | |  __/ | | | |_| | | | | (__| |_| | (_) | | | \__ \
+  \_____|\__,_|_| |_| |_|\___| |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/-}                                                                        
 
 updateWorld :: World -> Float -> KeysOfInput -> IO World
 updateWorld (World player entities speed spawnIncrement overlay) time keys =
@@ -57,11 +116,13 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                 (
                   ("Number of shooters: " ++ show (length (filter (isOfEType (Shooter 0 (0,0))) entities)) 
                    ++ "   " ++ 
-                  "Number of bullets: " ++ show (length (filter (isOfEType (Bullet 0)) entities))  
-                   ++ "   " ++ 
+                  --"Number of bullets: " ++ show (length (filter (isOfEType (Bullet 0)) entities))  
+                  -- ++ "   " ++ 
                    "Status: " ++ (show (getPlayerStatus player))
                    -- ++ "   " ++ 
                    --"Player loc: " ++ (show $ fst (findEntity player)) ++ ", " ++ (show $ snd (findEntity player))
+                   ++ "   " ++
+                   "Time: " ++ (show time)
                   )
                 )     
       where
@@ -95,7 +156,7 @@ handlePlayer player@(Entity etype faction loc hitbox speed angle mID) keys
 
 -- HANDLE MOVING --
 movingPlayer :: Location -> Hitbox -> KeysOfInput -> Location
-movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _)
+movingPlayer (locX,locY) (width, height) (Keys wIn aIn sIn dIn _ _)
   | wIn && not sIn && locY < (upperBound-height/2) = (locX, locY + playerSpeed)
   | sIn && not wIn && locY > (lowerBound+height/2) = (locX, locY - playerSpeed)
   | aIn && not dIn && locX > (leftBound+width/2) = (locX - playerSpeed, locY)
@@ -133,7 +194,7 @@ isOutOfBounds (Entity _ _ (x,y) _ _ _ _) = y < lowerBound || y > upperBound || x
 
 -- HANDLE SHOOTING --
 isShooting :: KeysOfInput -> Bool
-isShooting (Keys _ _ _ _ spaceIn) = spaceIn
+isShooting (Keys _ _ _ _ _ spaceIn) = spaceIn
 
 canShoot :: Entity -> Float -> Bool
 canShoot e@(Entity (Shooter _ (inc, next)) fac _ _ _ _ _) time = case fac of
@@ -295,13 +356,21 @@ toLocation (locX, locY) = (locX, locY)
 
 
 
+{-_____                   _      __                  _   _                 
+ |_   _|                 | |    / _|                | | (_)                
+   | |  _ __  _ __  _   _| |_  | |_ _   _ _ __   ___| |_ _  ___  _ __  ___ 
+   | | | '_ \| '_ \| | | | __| |  _| | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+  _| |_| | | | |_) | |_| | |_  | | | |_| | | | | (__| |_| | (_) | | | \__ \
+ |_____|_| |_| .__/ \__,_|\__| |_|  \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+             | |                                                           
+             |_|                                                           -}
 
--- | Handle user input
 input :: Event -> MainState -> IO MainState
 input e mstate = return (inputKey e mstate)
 
 inputKey :: Event -> MainState -> MainState
--- Moving input
+-- GAME INPUT --
+    --moving input
 inputKey (EventKey (Char 'w') Down _ _) mstate@(MGame (GameState w s t keys))
   = MGame (GameState w s t (keys {keyPressedW = True}))
 inputKey (EventKey (Char 'w') Up _ _) mstate@(MGame (GameState w s t keys))
@@ -318,12 +387,32 @@ inputKey (EventKey (Char 'd') Down _ _) mstate@(MGame (GameState w s t keys))
   = MGame (GameState w s t (keys {keyPressedD = True}))
 inputKey (EventKey (Char 'd') Up _ _) mstate@(MGame (GameState w s t keys))
   = MGame (GameState w s t (keys {keyPressedD = False}))
-
--- Shooting input
+    -- Shooting input
 inputKey (EventKey (SpecialKey KeySpace) Down _ _) mstate@(MGame (GameState w s t keys))
   = MGame (GameState w s t (keys {keyPressedSpace = True}))
 inputKey (EventKey (SpecialKey KeySpace) Up _ _) mstate@(MGame (GameState w s t keys))
   = MGame (GameState w s t (keys {keyPressedSpace = False}))
+    -- Misc input
+inputKey (EventKey (Char 'p') Down _ _) mstate@(MGame (GameState w s t keys))
+  = MGame (GameState w s t (keys {keyPressedP = True}))
+inputKey (EventKey (Char 'p') Up _ _) mstate@(MGame (GameState w s t keys))
+  = MGame (GameState w s t (keys {keyPressedP = False}))
+
+-- MENU INPUT --
+  --navigational
+inputKey (EventKey (Char 'w') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = True}) delay))
+inputKey (EventKey (Char 'w') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = False}) delay))
+inputKey (EventKey (Char 's') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = True}) delay))
+inputKey (EventKey (Char 's') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = False}) delay))
+  --confirm selection
+inputKey (EventKey (SpecialKey KeySpace) Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = True}) delay))
+inputKey (EventKey (SpecialKey KeySpace) Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = False}) delay))
 
 -- Lack of input
 inputKey _ mstate = mstate -- Otherwise keep the same
