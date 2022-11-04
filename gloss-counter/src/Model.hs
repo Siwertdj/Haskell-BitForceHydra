@@ -5,10 +5,10 @@
 --   which represent the state of the game
 module Model where
 
-data MainState = MGame GameState | MMenu MenuState
+data MainState = MGame GameState | MMenu MenuState | Exit
 
 data GameState = GameState {  world :: World
-                            , score :: Int
+                            , score :: Float
                             , elapsedTime :: Float
                             , gameKeys :: KeysOfInput
                            }
@@ -33,6 +33,7 @@ data World = World  { player :: Entity
                     , scrollSpeed :: Float
                     , spawnIncrement :: Float
                     , overlay :: String          -- for debugging during the game, at the moment.
+                    -- , accumulatedScore :: Float
                     -- , background :: Picture   -- variabele die verwijst naar een picture
                     }
 
@@ -59,11 +60,11 @@ data Movement = Movement {
                           movementPaternID :: Int, 
                           moveWithWorld :: Bool
                          }
-                         
-data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction
---                          |      |  |              |            |
---                          V      V  V              V            V
---                      health   (increments)     damage        damage/health?
+
+data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction (EntityType a) Faction
+--                          |      |  |              |            |                         |     |
+--                          V      V  V              V            V                         V     V
+--                      health   (increments)     damage        damage/health?          what was destroyed?
 
 data Faction = Player | Enemy | Neutral
   deriving Eq
@@ -89,7 +90,7 @@ mainMenu :: MenuState
 mainMenu = MenuState  ( Menu
                         ( (MenuOption "New Game" 1 (MGame newGame)) 
                         : (MenuOption "Continue Game" 2 (MGame newGame))
-                        : (MenuOption "Quit Game" 3 (MGame newGame))
+                        : (MenuOption "Quit Game" 3 Exit)
                         : [])
                         1    -- Index starts at 1
                       ) 
@@ -128,12 +129,19 @@ emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0,0) (Movement (0,0) 0 0 (-2) False)
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 0 False)
+playerEntity = Entity (Shooter playerHealth ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 0 False)
   where y = fromIntegral screenHeight :: Float
 
 
+-- enemies --
 enemyTypes :: [Entity]
-enemyTypes =    [staticEnemy, aimingEnemy]
+enemyTypes =    [genericEnemy, staticEnemy, aimingEnemy]
+
+genericEnemy :: Entity
+genericEnemy = Entity (Shooter 30 (0.8,0)) Enemy (15,15) (Movement (x, y/2) 5 0 0 True) 
+  where
+    x = fromIntegral screenWidth :: Float
+    y = fromIntegral screenHeight :: Float
 
 staticEnemy :: Entity
 staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (10,10) (Movement (x, y/2)  0 0 1 True)
@@ -156,14 +164,22 @@ aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (10,10) (Movement (x, y/2) (negate
 playerSpeed :: Float
 playerSpeed = 5
 
+playerShootIncrement :: Float
+playerShootIncrement = 1
+
+playerHealth :: Float
+playerHealth = 1000000
+
+
 initialScrollSpeed :: Float
-initialScrollSpeed = 2
+initialScrollSpeed = 1
 
 initialSpawnIncrement :: Float
-initialSpawnIncrement = 5
+initialSpawnIncrement = 2
 
-playerShootIncrement :: Float
-playerShootIncrement = 2
+scaleInterval :: Float
+scaleInterval = 15
+
 
 
 
