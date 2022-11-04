@@ -16,7 +16,6 @@ data GameState = GameState {  world :: World
 data MenuState = MenuState {  menu :: Menu
                             , game :: GameState
                             , menuKeys :: KeysOfInput
-                            , inputDelay :: Float
                            }
 
 data Menu = Menu {  options :: [MenuOption]
@@ -96,7 +95,6 @@ mainMenu = MenuState  ( Menu
                       ) 
                       emptyGame
                       emptyKeys
-                      menuInputDelay
 
 pauseMenu :: MenuState
 pauseMenu = MenuState  ( Menu
@@ -108,7 +106,6 @@ pauseMenu = MenuState  ( Menu
                       ) 
                       emptyGame
                       emptyKeys
-                      menuInputDelay
 
 -- INITIALISED GAMESTATES/WORLDS --
 newGame :: GameState

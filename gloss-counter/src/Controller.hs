@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# language NamedFieldPuns #-}
 -- | This module defines how the state changes
 --   in response to time and user input
 module Controller where
@@ -13,23 +14,23 @@ import Data.Data (ConstrRep(FloatConstr))
 import Data.List
 import Graphics.Gloss.Geometry.Angle (radToDeg, normalizeAngle)
 import System.Exit (exitSuccess)
-
+ 
+ 
 -- | Handle one iteration of the game
 step :: Float -> MainState -> IO MainState
-step secs mstate@(MMenu (MenuState mNav@(Menu options index) gameState keys@(Keys _ _ _ _ _ space) inputDelay))                                   --  IS IN MENU
-  = if space
+step secs mstate@(MMenu menu@(MenuState mNav@(Menu options index) gameState keys))                                   --  IS IN MENU
+  = if keyPressedSpace $ menuKeys menu
       then  return $ confirmMenuOption $ options !!  (index-1)
       else  return $ MMenu (MenuState
               (navigateMenu mNav keys (True))
               gameState
               (keys {keyPressedW = False, keyPressedS = False})   -- resets input to prevent 'holding them down' and cycling the menu too quickly
-              inputDelay
               )
 step secs mstate@(MGame gstate@(GameState world score elapsedTime keys@(Keys _ _ _ _ pIn _)))                  --  IS IN GAME
   = if pIn -- If wanting to pause, return the pause-menu
       then return $ MMenu $ 
         (storeGameState 
-          (pauseMenu {menu = (changeMenuOption (getMenu pauseMenu)  1 (setOptionNextState) 
+          (pauseMenu {menu = (changeMenuOption (getMenu pauseMenu)  1 (setOptionNextState) -- Currently there is a minor bug which hides the 'Continue game' option from the pause-menu
                               (MGame gstate {gameKeys = (keys {keyPressedP = False})}) )}) 
           gstate
         )          
@@ -70,7 +71,7 @@ confirmMenuOption :: MenuOption -> MainState
 confirmMenuOption (MenuOption _ _ next) = next
 
 getMenu :: MenuState -> Menu
-getMenu (MenuState menu _ _ _) = menu
+getMenu (MenuState menu _ _) = menu
 
 changeMenuOption :: Menu -> Int -> (MenuOption -> MainState -> MenuOption) -> MainState -> Menu
 changeMenuOption (Menu options i) index f newState = Menu (addInbetween  (f (options !! index) newState)) i
@@ -436,19 +437,19 @@ inputKey (EventKey (Char 'p') Up _ _) mstate@(MGame (GameState w s t keys))
 
 -- MENU INPUT --
   --navigational
-inputKey (EventKey (Char 'w') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = True}) delay))
-inputKey (EventKey (Char 'w') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = False}) delay))
-inputKey (EventKey (Char 's') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = True}) delay))
-inputKey (EventKey (Char 's') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = False}) delay))
+inputKey (EventKey (Char 'w') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = True})))
+inputKey (EventKey (Char 'w') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedW = False})))
+inputKey (EventKey (Char 's') Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = True})))
+inputKey (EventKey (Char 's') Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedS = False})))
   --confirm selection
-inputKey (EventKey (SpecialKey KeySpace) Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = True}) delay))
-inputKey (EventKey (SpecialKey KeySpace) Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys delay))
-  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = False}) delay))
+inputKey (EventKey (SpecialKey KeySpace) Down _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = True})))
+inputKey (EventKey (SpecialKey KeySpace) Up _ _) mstate@(MMenu (MenuState (Menu options index) game keys))
+  = (MMenu (MenuState (Menu options index) game (keys {keyPressedSpace = False})))
 
 -- Lack of input
 inputKey _ mstate = mstate -- Otherwise keep the same

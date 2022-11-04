@@ -21,7 +21,7 @@ viewPure _
   = viewText "closing game" (0,0) (0,0)
 
 viewMenu :: MenuState -> Picture
-viewMenu (MenuState (Menu options pointer) game _ _)
+viewMenu (MenuState (Menu options pointer) game _)
   = pictures $
       --something       :
         map (viewMenuOption pointer) options
