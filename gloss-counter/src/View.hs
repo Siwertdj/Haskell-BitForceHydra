@@ -52,7 +52,7 @@ viewText cs (x,y) (sx,sy)=  translate x y $ Graphics.Gloss.color white $ scale s
 
 drawEntities :: Entity -> Picture
 --drawShips (ShipObject _ (locX,locY) width height colr) = translate locX locY $ Graphics.Gloss.color colr $ rectangleSolid width height
-drawEntities (Entity eType faction (locX,locY) (width, height) _ angle _)
+drawEntities (Entity eType faction (width, height) (Movement (locX,locY)  _ angle _ _))
   = translate locX locY $ rotate angle $ Graphics.Gloss.color (drawColor eType faction) $ rectangleSolid width height
     where
       drawColor :: EntityType Float -> Faction -> Color

@@ -135,13 +135,13 @@ enemyTypes :: [Entity]
 enemyTypes =    [staticEnemy, aimingEnemy]
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (x, y/2) (10,10) 0 0 1
+staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (10,10) (Movement (x, y/2)  0 0 1 True)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (x, y/2) (10,10) (negate initialScrollSpeed) 0 2
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (10,10) (Movement (x, y/2) (negate initialScrollSpeed) 0 2 False)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
