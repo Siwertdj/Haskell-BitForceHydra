@@ -1,3 +1,7 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Move brackets to avoid $" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Use list literal" #-}
 -- | This module defines how to turn
 --   the game state into a picture
 module View where
@@ -9,16 +13,41 @@ view :: MainState -> IO Picture
 view = return . viewPure
 
 viewPure :: MainState -> Picture
-viewPure (MMenu _) = undefined
-viewPure (MGame (GameState (World player entities _ _ text ) _ _ _))
-  = pictures (
-        map drawEntities entities
-    ++  [ drawEntities player]
-    ++  [viewText text]
-    )
+viewPure (MMenu menu)
+  = viewMenu menu
+viewPure (MGame gstate)
+  = viewGame gstate
 
-viewText :: String -> Picture
-viewText cs =  translate leftBound 0 $ Graphics.Gloss.color white $ scale 0.2 0.2 $ text (show cs)
+viewMenu :: MenuState -> Picture
+viewMenu (MenuState (Menu options pointer) game _ _)
+  = pictures $
+      --something       :
+        map (viewMenuOption pointer) options
+    ++ [Graphics.Gloss.color white  $ scale 64 64 $ rectangleWire (rightBound/32)(upperBound/32)] 
+    ++ [viewGame game]
+
+viewGame :: GameState -> Picture
+viewGame (GameState (World player entities _ _ text ) _ _ _)
+  = pictures $
+        map drawEntities entities
+    ++  [drawEntities player]
+    ++  [viewText text (leftBound,0) (0.2,0.2)]
+
+
+viewMenuOption :: Int -> MenuOption -> Picture
+viewMenuOption currentIndex (MenuOption text optionIndex _)
+  = pictures $
+      (viewText text  (leftBound + 50, upperBound - spacing * (fromIntegral optionIndex))   (scale, scale))
+    : (viewText ">"   (leftBound + 10, upperBound - spacing * (fromIntegral currentIndex))  (scale, scale))
+    : []
+  where 
+    spacing = 30 :: Float
+    scale = 0.2
+
+viewText :: String -> (Float,Float) -> (Float, Float) -> Picture
+viewText cs (x,y) (sx,sy)=  translate x y $ Graphics.Gloss.color white $ scale sx sy $ text (show cs)
+
+
 
 
 drawEntities :: Entity -> Picture
