@@ -59,6 +59,7 @@ data Movement = Movement {
                           movementPaternID :: Int, 
                           moveWithWorld :: Bool
                          }
+                         
 data EntityType a = Shooter a (Float,Float) | Bullet a | Obstacle a | Destruction
 --                          |      |  |              |            |
 --                          V      V  V              V            V

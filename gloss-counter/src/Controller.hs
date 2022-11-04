@@ -99,7 +99,7 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                   entities
                 )
                 ( -- Update Entities --
-                   map (allignToPlayer player) $ filter (not . isOutOfBounds) $ filter (not.isDestroyed) (
+                   map (allignToPlayer player) $ filter (not . isOutOfBounds) $ filter (not.isDestroyed) $ collision (
                   (if (spawnIncrement - time) <= 0 then map (changeAngle player) (newEnemy : updatedEntities) else map (changeAngle player) updatedEntities)
                   ++
                   ([Entity (Bullet 30) Player (10,10) (Movement (findEntity player)  (-10) 0 (-1) False) | snd (canShoot' player)])
@@ -107,9 +107,9 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                   ([(Entity (Bullet 1) fac (10,10) (Movement eLoc 10 angle (-1) False))| (enemy@(Entity _ fac _ (Movement eLoc _ angle _ _)), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
                 )
-                
-                -- Update scrollspeed --
+                (-- Update scrollspeed --
                 speed
+                )
                 ( -- Update spawnIncrement -- 
                   if time > spawnIncrement then time + initialSpawnIncrement else spawnIncrement -- next spawn time is upped by 5 seconds (the increment) when the elapsedTime passes its current value, thus every 5 seconds something will spawn.
                 )
@@ -138,7 +138,7 @@ spawnEnemy =
       randomLocation  <- randomRIO(leftBound, rightBound) :: IO Float
       randomSelector  <- randomRIO(0, amountOfEnemyTypes) :: IO Int
       let randomEnemy = enemyTypes !! randomSelector
-      return $ randomEnemy {movement = Movement {location = (randomLocation, upperBound)}} -- {location = (randomLocation, upperBound)}
+      return $ randomEnemy {movement = (findEntity' randomEnemy) {location = (randomLocation, upperBound)}} -- {location = (randomLocation, upperBound)}
 
 
 handlePlayer :: Entity -> KeysOfInput -> Entity
@@ -146,8 +146,8 @@ handlePlayer player@(Entity etype faction hitbox (Movement loc speed angle mID m
   = Entity
       etype
       faction
-      (movingPlayer loc hitbox keys)         -- change location
-      (Movement loc speed angle mID moveWWorld)
+      hitbox --(movingPlayer loc hitbox keys)         -- change location
+      (Movement (movingPlayer loc hitbox keys) speed angle mID moveWWorld)
       
 
 
@@ -171,9 +171,10 @@ moveEntities scrollSpeed entity@(Entity eType faction hitbox (Movement location 
   = (entity \/ scrollSpeed) \/ speed
 
 moveBullet :: Entity -> Entity
-moveBullet e@(Entity (Bullet hp) Enemy hb (Movement (ex,ey) spd angle 1 moveWithWorld)) = 
-  (Entity (Bullet hp) Enemy hb (Movement (ex,ey) spd angle 1 moveWithWorld))
-
+moveBullet e@(Entity (Bullet hp) _ _ (Movement (ex,ey) spd angle mpid moveWithWorld)) 
+  = (e {movement = (Movement (ex,ey) spd angle mpid moveWithWorld)})
+moveBullet e@(Entity _ _ _ _) 
+  = e
 
 changeAngle :: Entity -> Entity -> Entity
 changeAngle p@(Entity _ Player _ ( Movement (px,py)  _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle 1 moveWithWorld)) =
@@ -275,7 +276,8 @@ findEntity :: Entity -> Location
 findEntity (Entity _ _ _ (Movement loc _ _ _ _)) = loc
 
 
-
+findEntity' :: Entity -> Movement
+findEntity' (Entity _ _ _ movement) = movement
 
 -- Debugging functions--
 getEntityType :: Entity -> EntityType Float 
@@ -316,10 +318,12 @@ class Move a where      -- (Float, Float)
   (/\) , (\/), (~>), (<~) :: a -> Float -> a          -- /\ is up, \/ is down
 
 instance Move Entity where
-  entity /\ y = entity { movement = Movement {location = (fst $ findEntity entity, snd (findEntity entity) + y) }}
-  entity \/ y = entity { movement = Movement {location = (fst $ findEntity entity, snd (findEntity entity) - y) }}
-  entity ~> x = entity { movement = Movement {location = (fst (findEntity entity) + x, snd $ findEntity entity) }}
-  entity <~ x = entity { movement = Movement {location = (fst (findEntity entity) - x, snd $ findEntity entity) }}
+  entity /\ y = entity { movement = (findEntity' entity) {location = (fst $ findEntity entity, snd (findEntity entity) + y) }}
+  entity \/ y = entity { movement = (findEntity' entity) {location = (fst $ findEntity entity, snd (findEntity entity) - y) }}
+  entity ~> x = entity { movement = (findEntity' entity) {location = (fst (findEntity entity) + x, snd $ findEntity entity) }}
+  entity <~ x = entity { movement = (findEntity' entity) {location = (fst (findEntity entity) - x, snd $ findEntity entity) }}
+
+--(MGame gstate {gameKeys = (keys {keyPressedP = False})})
 
 {-
 instance Move Location where
