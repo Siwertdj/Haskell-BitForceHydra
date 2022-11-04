@@ -41,11 +41,11 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                 )
                 ( -- Update Entities --
                    map (allignToPlayer player) $ filter (not . isOutOfBounds) $ filter (not.isDestroyed) (
-                  (if (spawnIncrement - time) <= 0 then newEnemy : updatedEntities else updatedEntities)
+                  (if (spawnIncrement - time) <= 0 then map (changeAngle player) (newEnemy : updatedEntities) else map (changeAngle player) updatedEntities)
                   ++
                   ([Entity (Bullet 30) Player (findEntity player) (10,10) (-10) 0 (-1) | snd (canShoot' player)])
                   ++
-                  ([Entity (Bullet 1) fac eLoc (10,10) 10 angle (-1)| (enemy@(Entity _ fac eLoc _ _ angle _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  ([(Entity (Bullet 1) fac eLoc (10,10) 10 angle (-1))| (enemy@(Entity _ fac eLoc _ _ angle _), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
                 )
                 
@@ -111,15 +111,21 @@ moveEntities :: Float -> Entity -> Entity
 moveEntities scrollSpeed entity@(Entity eType faction location hitbox speed angle mID)
   = (entity \/ scrollSpeed) \/ speed
 
+moveBullet :: Entity -> Entity
+moveBullet e@(Entity (Bullet hp) Enemy (ex,ey) hb spd angle 1) = 
+  (Entity (Bullet hp) Enemy (ex,ey) hb spd angle 1)
 
-changeBulletAngle :: Entity -> Entity -> Entity
-changeBulletAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity( Bullet hp) Enemy (ex,ey) hb spd angle (-1)) =
-  Entity(Bullet hp) Enemy (ex,ey) hb spd newAngle (-1)
+  where 
+
+
+changeAngle :: Entity -> Entity -> Entity
+changeAngle p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 1) =
+  Entity eType Enemy (ex,ey) hb spd newAngle 1
  where distX = px - ex
        distY = py - ey
        newAngle = radToDeg nAngle
        nAngle = normalizeAngle (atan (distX/distY))
-changeBulletAngle p e = e
+changeAngle p e = e
 
 allignToPlayer :: Entity -> Entity -> Entity
 allignToPlayer p@(Entity _ Player (px,py) _ _ _ _) e@(Entity eType Enemy (ex,ey) hb spd angle 2) 
@@ -148,11 +154,11 @@ canShoot _ _ = False
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
 shootTimer e@(Entity (Shooter hp (inc, next)) Player loc hb spd ang mID) time keys =
   if canShoot e time && isShooting keys
-    then (Entity (Shooter hp (inc, next + inc)) Player loc hb spd ang mID, True)
+    then (Entity (Shooter hp (inc, time + inc)) Player loc hb spd ang mID, True)
     else (e,False)
 shootTimer e@(Entity (Shooter hp (inc, next)) Enemy loc hb spd ang mID) time _ =
   if canShoot e time
-    then (Entity (Shooter hp (inc, next + inc)) Enemy loc hb spd ang mID, True)
+    then (Entity (Shooter hp (inc, time + inc)) Enemy loc hb spd ang mID, True)
     else (e,False)
 shootTimer e _ _ = (e, False)
 

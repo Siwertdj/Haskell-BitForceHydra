@@ -24,7 +24,7 @@ viewText cs =  translate leftBound 0 $ Graphics.Gloss.color white $ scale 0.2 0.
 drawEntities :: Entity -> Picture
 --drawShips (ShipObject _ (locX,locY) width height colr) = translate locX locY $ Graphics.Gloss.color colr $ rectangleSolid width height
 drawEntities (Entity eType faction (locX,locY) (width, height) _ angle _)
-  = rotate angle $ translate locX locY $ Graphics.Gloss.color (drawColor eType faction) $ rectangleSolid width height
+  = translate locX locY $ rotate angle $ Graphics.Gloss.color (drawColor eType faction) $ rectangleSolid width height
     where
       drawColor :: EntityType Float -> Faction -> Color
       drawColor (Bullet _) _ = yellow
