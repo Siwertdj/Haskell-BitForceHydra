@@ -104,7 +104,7 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                   ++
                   ([Entity (Bullet 30) Player (10,10) (Movement (findEntity player) (-10) 0 (0,0) (-1) False) | snd (canShoot' player)])
                   ++
-                  ([changeDirection player (Entity (Bullet 1) fac (10,10) (Movement eLoc 10 angle (0,0) (-1) False))| (enemy@(Entity _ fac _ (Movement eLoc _ angle _ mpID _)), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  ([changeDirection player (Entity (Bullet 1) fac (10,10) (Movement eLoc 10 angle (0,0) (-1) mWW))| (enemy@(Entity _ fac _ (Movement eLoc _ angle _ mpID mWW)), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
                 )
                 (-- Update scrollspeed --
@@ -172,8 +172,10 @@ moveEntities scrollSpeed entity@(Entity eType faction hitbox (Movement location 
   = (entity \/ scrollSpeed) \/ speed
 
 moveBullet :: Float -> Entity -> Entity
-moveBullet scroll e@(Entity (Bullet hp) Enemy _ (Movement (ex,ey) spd angle (dx,dy) (-1) moveWithWorld)) 
-  = (e \/ scroll) /\ (spd * dy) ~> (spd * dx)
+moveBullet scroll e@(Entity (Bullet hp) Enemy _ (Movement (ex,ey) spd angle (dx,dy) (-1) True)) 
+  = e /\ (spd * dy) ~> (spd * dx)
+moveBullet scroll e@(Entity (Bullet hp) Enemy _ (Movement (ex,ey) spd angle (dx,dy) mpid False)) 
+  = e \/ scroll \/ spd
 moveBullet scroll e@(Entity (Bullet hp) Player _ (Movement (ex,ey) spd angle (dx,dy) mpid moveWithWorld)) 
   = e \/ scroll \/ spd
 moveBullet scroll e@(Entity _ _ _ _) 
@@ -193,6 +195,7 @@ changeDirection p@(Entity _ Player _ (Movement (px,py) _ _ _ _ _)) e@(Entity eTy
    = Entity eType Enemy hb  (Movement (ex,ey) spd angle (normalize (distX,distY)) mpID moveWithWorld)
       where distX = px - ex
             distY = py - ey
+changeDirection _ e = e
 
 normalize :: (Float,Float) -> (Float,Float)
 normalize (x,y) = (x / unit, y / unit)
