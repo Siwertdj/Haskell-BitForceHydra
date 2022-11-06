@@ -102,9 +102,9 @@ updateWorld (World player entities speed spawnIncrement overlay) time keys =
                    map (allignToPlayer player) $ filter (not . isOutOfBounds) $ filter (not.isDestroyed) $ collision (
                   (if (spawnIncrement - time) <= 0 then map (changeAngle player) (newEnemy : updatedEntities) else map (changeAngle player) updatedEntities)
                   ++
-                  ([Entity (Bullet 30) Player (10,10) (Movement (findEntity player)  (-10) 0 (-1) False) | snd (canShoot' player)])
+                  ([Entity (Bullet 30) Player (10,10) (Movement (findEntity player) (-10) 0 (0,0) (-1) False) | snd (canShoot' player)])
                   ++
-                  ([(Entity (Bullet 1) fac (10,10) (Movement eLoc 10 angle (-1) False))| (enemy@(Entity _ fac _ (Movement eLoc _ angle _ _)), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
+                  ([changeDirection player (Entity (Bullet 1) fac (10,10) (Movement eLoc 10 angle (0,0) (-1) mWW))| (enemy@(Entity _ fac _ (Movement eLoc _ angle _ mpID mWW)), shooting) <- entitiesCanShoot, shooting && fac == Enemy])
                   )
                 )
                 (-- Update scrollspeed --
@@ -142,12 +142,12 @@ spawnEnemy =
 
 
 handlePlayer :: Entity -> KeysOfInput -> Entity
-handlePlayer player@(Entity etype faction hitbox (Movement loc speed angle mID moveWWorld)) keys
+handlePlayer player@(Entity etype faction hitbox (Movement loc speed angle dir mID moveWWorld)) keys
   = Entity
       etype
       faction
       hitbox --(movingPlayer loc hitbox keys)         -- change location
-      (Movement (movingPlayer loc hitbox keys) speed angle mID moveWWorld)
+      (Movement (movingPlayer loc hitbox keys) speed angle dir mID moveWWorld)
       
 
 
@@ -167,34 +167,50 @@ movingEntities :: [Entity] -> Float -> [Entity]
 movingEntities entities scrollSpeed = map (moveEntities scrollSpeed) entities
 
 moveEntities :: Float -> Entity -> Entity
-moveEntities scrollSpeed entity@(Entity eType faction hitbox (Movement location speed angle mID moveWithWorld))
+moveEntities scrollSpeed entity@(Entity (Bullet _) _ _ _) = moveBullet scrollSpeed entity
+moveEntities scrollSpeed entity@(Entity eType faction hitbox (Movement location speed angle dir mID moveWithWorld))
   = (entity \/ scrollSpeed) \/ speed
 
-moveBullet :: Entity -> Entity
-moveBullet e@(Entity (Bullet hp) _ _ (Movement (ex,ey) spd angle mpid moveWithWorld)) 
-  = (e {movement = (Movement (ex,ey) spd angle mpid moveWithWorld)})
-moveBullet e@(Entity _ _ _ _) 
+moveBullet :: Float -> Entity -> Entity
+moveBullet scroll e@(Entity (Bullet hp) Enemy _ (Movement (ex,ey) spd angle (dx,dy) (-1) True)) 
+  = e /\ (spd * dy) ~> (spd * dx)
+moveBullet scroll e@(Entity (Bullet hp) Enemy _ (Movement (ex,ey) spd angle (dx,dy) mpid False)) 
+  = e \/ scroll \/ spd
+moveBullet scroll e@(Entity (Bullet hp) Player _ (Movement (ex,ey) spd angle (dx,dy) mpid moveWithWorld)) 
+  = e \/ scroll \/ spd
+moveBullet scroll e@(Entity _ _ _ _) 
   = e
 
 changeAngle :: Entity -> Entity -> Entity
-changeAngle p@(Entity _ Player _ ( Movement (px,py)  _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle 1 moveWithWorld)) =
-  Entity eType Enemy hb (Movement (ex,ey) spd newAngle 1 moveWithWorld)
+changeAngle p@(Entity _ Player _ ( Movement (px,py)  _ _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle dir 1 moveWithWorld)) =
+  Entity eType Enemy hb (Movement (ex,ey) spd newAngle (distX,distY) 1 moveWithWorld)
  where distX = px - ex
        distY = py - ey
        newAngle = radToDeg nAngle
        nAngle = normalizeAngle (atan (distX/distY))
 changeAngle p e = e
 
+changeDirection :: Entity -> Entity -> Entity
+changeDirection p@(Entity _ Player _ (Movement (px,py) _ _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle (dx,dy) mpID moveWithWorld)) 
+   = Entity eType Enemy hb  (Movement (ex,ey) spd angle (normalize (distX,distY)) mpID moveWithWorld)
+      where distX = px - ex
+            distY = py - ey
+changeDirection _ e = e
+
+normalize :: (Float,Float) -> (Float,Float)
+normalize (x,y) = (x / unit, y / unit)
+  where unit = sqrt (x*x + y*y)
+
 allignToPlayer :: Entity -> Entity -> Entity
-allignToPlayer p@(Entity _ Player _ (Movement (px,py) _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle 2 moveWithWorld)) 
-  | px > ex - spd = Entity eType Enemy hb (Movement (ex - spd,ey) spd angle 2 moveWithWorld)
-  | px < ex + spd = Entity eType Enemy hb (Movement (ex + spd,ey) spd angle 2 moveWithWorld)
+allignToPlayer p@(Entity _ Player _ (Movement (px,py) _ _ _ _ _)) e@(Entity eType Enemy hb (Movement (ex,ey) spd angle dir 2 moveWithWorld)) 
+  | px > ex - spd = Entity eType Enemy hb (Movement (ex - spd,ey) spd angle dir 2 moveWithWorld)
+  | px < ex + spd = Entity eType Enemy hb (Movement (ex + spd,ey) spd angle dir 2 moveWithWorld)
   | otherwise = e
 allignToPlayer p e = e
 
 -- If out of bounds == True
 isOutOfBounds :: Entity -> Bool
-isOutOfBounds (Entity _ _ _ (Movement (x,y) _ _ _ _)) = y < lowerBound || y > upperBound || x < leftBound || x > rightBound
+isOutOfBounds (Entity _ _ _ (Movement (x,y) _ _ _ _ _)) = y < lowerBound || y > upperBound || x < leftBound || x > rightBound
 
 
 -- HANDLE SHOOTING --
@@ -210,13 +226,13 @@ canShoot _ _ = False
 
 -- The return type of (Entity, Bool) represents (<Entity in question>, <Can it shoot?>)
 shootTimer :: Entity -> Float -> KeysOfInput -> (Entity, Bool)
-shootTimer e@(Entity (Shooter hp (inc, next)) Player hb (Movement loc spd ang mID moveWithWorld)) time keys =
+shootTimer e@(Entity (Shooter hp (inc, next)) Player hb (Movement loc spd ang dir mID moveWithWorld)) time keys =
   if canShoot e time && isShooting keys
-    then (Entity (Shooter hp (inc, time + inc)) Player hb (Movement loc spd ang mID moveWithWorld), True)
+    then (Entity (Shooter hp (inc, time + inc)) Player hb (Movement loc spd ang dir mID moveWithWorld), True)
     else (e,False)
-shootTimer e@(Entity (Shooter hp (inc, next)) Enemy hb (Movement loc spd ang mID moveWithWorld)) time _ =
+shootTimer e@(Entity (Shooter hp (inc, next)) Enemy hb (Movement loc spd ang dir mID moveWithWorld)) time _ =
   if canShoot e time
-    then (Entity (Shooter hp (inc, time + inc)) Enemy hb (Movement loc spd ang mID moveWithWorld), True)
+    then (Entity (Shooter hp (inc, time + inc)) Enemy hb (Movement loc spd ang dir mID moveWithWorld), True)
     else (e,False)
 shootTimer e _ _ = (e, False)
 
@@ -244,16 +260,16 @@ collideWithAll entity = foldr f v
 handleCollision :: Entity -> Entity -> Entity
 handleCollision e1@(Entity (Shooter health _) _ _ _) e2@(Entity (Shooter _ _) _ _ _)      -- Two shooters destroy eachother
   = destroyEntity e1
-handleCollision e1@(Entity (Shooter health incs) fac hbox (Movement loc speed angle mID moveWithWorld)) e2@(Entity (Bullet damage) _ _ _)  -- Bullet reduces health of shooter
-  = if health - damage <= 0 then destroyEntity e1 else Entity (Shooter (health - damage) incs) fac hbox (Movement loc speed angle mID moveWithWorld)
-handleCollision e1@(Entity (Bullet damage1) fac hbox (Movement loc speed angle mID moveWithWorld)) e2@(Entity (Bullet damage2) _ _ _)   -- Stronger bullet survives, otherwise both are destroyed
+handleCollision e1@(Entity (Shooter health incs) fac hbox (Movement loc speed angle dir mID moveWithWorld)) e2@(Entity (Bullet damage) _ _ _)  -- Bullet reduces health of shooter
+  = if health - damage <= 0 then destroyEntity e1 else Entity (Shooter (health - damage) incs) fac hbox (Movement loc speed angle dir mID moveWithWorld)
+handleCollision e1@(Entity (Bullet damage1) fac hbox (Movement loc speed angle dir mID moveWithWorld)) e2@(Entity (Bullet damage2) _ _ _)   -- Stronger bullet survives, otherwise both are destroyed
   = destroyEntity e1--if damage1 > damage2 then e1 else destroyEntity e1
-handleCollision e1@(Entity (Bullet damage1) fac hbox (Movement loc speed angle mID moveWithWorld)) e2@(Entity (Shooter _ _) _ _ _)      -- Bullet is removed when it hits a Player
+handleCollision e1@(Entity (Bullet damage1) fac hbox (Movement loc speed angle dir mID moveWithWorld)) e2@(Entity (Shooter _ _) _ _ _)      -- Bullet is removed when it hits a Player
   = destroyEntity e1
 handleCollision e1 _ = e1
 
 destroyEntity :: Entity -> Entity
-destroyEntity (Entity _ _ hbox (Movement loc _ _ _ _)) = Entity Destruction Neutral hbox (Movement loc 0 0 (-2) False)
+destroyEntity (Entity _ _ hbox (Movement loc _ _ _ _ _)) = Entity Destruction Neutral hbox (Movement loc 0 0 (0,0) (-2) False)
 
 isDestroyed :: Entity -> Bool
 isDestroyed (Entity Destruction _ _ _) = True
@@ -261,7 +277,7 @@ isDestroyed _ = False
 
 -- This is very simplistic at the moment, but as long as entities are just squares, it will work fine
 checkCollision :: Entity -> Entity -> Bool
-checkCollision e1@(Entity type1 fac1 (w1,h1) (Movement loc1 speed1 angle1 mID1 moveWithWorld1)) e2@(Entity type2 fac2 (w2,h2) (Movement loc2 speed2 angle2 mID2 moveWithWorld2))
+checkCollision e1@(Entity type1 fac1 (w1,h1) (Movement loc1 speed1 angle1 dir1 mID1 moveWithWorld1)) e2@(Entity type2 fac2 (w2,h2) (Movement loc2 speed2 angle2 dir2 mID2 moveWithWorld2))
   | fac1 == fac2 = False
   | otherwise  = (checkDistance loc1 loc2 <= max (w1+w2) (h1+h2))  --if not the same faction and hit =True
   
@@ -273,7 +289,7 @@ checkDistance (x1,y1) (x2,y2) = sqrt( (x2-x1)**2 + (y2-y1)**2)
 --(Entity type fac loc hbox speed angle)
 
 findEntity :: Entity -> Location
-findEntity (Entity _ _ _ (Movement loc _ _ _ _)) = loc
+findEntity (Entity _ _ _ (Movement loc _ _ _ _ _)) = loc
 
 
 findEntity' :: Entity -> Movement

@@ -56,6 +56,7 @@ data Movement = Movement {
                           location :: Location,
                           speed :: Float, 
                           angle :: Float, 
+                          direction :: (Float, Float),
                           movementPaternID :: Int, 
                           moveWithWorld :: Bool
                          }
@@ -125,10 +126,10 @@ newWorld = World playerEntity [] initialScrollSpeed initialSpawnIncrement ""
 
 -- INITIALISED ENTITIES --
 emptyEntity :: Entity
-emptyEntity = Entity (Obstacle 1) Neutral (0,0) (Movement (0,0) 0 0 (-2) False)
+emptyEntity = Entity (Obstacle 1) Neutral (0,0) (Movement (0,0) 0 0 (0,0) (-2) False)
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter 10 ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 0 False)
+playerEntity = Entity (Shooter 10 ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 (0,0) 0 False)
   where y = fromIntegral screenHeight :: Float
 
 
@@ -136,13 +137,13 @@ enemyTypes :: [Entity]
 enemyTypes =    [staticEnemy, aimingEnemy]
 
 staticEnemy :: Entity
-staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (10,10) (Movement (x, y/2)  0 0 1 True)
+staticEnemy = Entity (Shooter 30 (1.5,0)) Enemy (10,10) (Movement (x, y/2)  0 0 (0,0) 1 True)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
 
 aimingEnemy :: Entity
-aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (10,10) (Movement (x, y/2) (negate initialScrollSpeed) 0 2 False)
+aimingEnemy = Entity (Shooter 30 (3,0)) Enemy (10,10) (Movement (x, y/2) (negate initialScrollSpeed) 0 (0,0) 2 False)
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float
