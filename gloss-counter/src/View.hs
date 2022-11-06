@@ -17,9 +17,11 @@ viewPure (MMenu menu)
   = viewMenu menu
 viewPure (MGame gstate)
   = viewGame gstate
+viewPure _
+  = viewText "closing game" (0,0) (0,0)
 
 viewMenu :: MenuState -> Picture
-viewMenu (MenuState (Menu options pointer) game _ _)
+viewMenu (MenuState (Menu options pointer) game _)
   = pictures $
       --something       :
         map (viewMenuOption pointer) options
@@ -27,9 +29,10 @@ viewMenu (MenuState (Menu options pointer) game _ _)
     ++ [viewGame game]
 
 viewGame :: GameState -> Picture
-viewGame (GameState (World player entities _ _ text ) _ _ _)
+viewGame (GameState (World player entities _ _ text ) score _ _)
   = pictures $
-        map drawEntities entities
+        [viewText (show score) (0,upperBound/2) (1,1)]
+    ++  (map drawEntities entities)
     ++  [drawEntities player]
     ++  [viewText text (leftBound,0) (0.2,0.2)]
 
@@ -58,7 +61,7 @@ drawEntities (Entity eType faction (width, height) (Movement (locX,locY)  _ angl
       drawColor :: EntityType Float -> Faction -> Color
       drawColor (Bullet _) _ = yellow
       drawColor (Obstacle _) _ = blue
-      drawColor Destruction _ = orange              --does this work properly?
+      drawColor (Destruction _ _) _ = orange              --does this work properly?
       drawColor _ fac = case fac of
                                   Player  -> green
                                   Enemy   -> red
