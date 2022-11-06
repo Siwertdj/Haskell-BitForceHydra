@@ -127,7 +127,7 @@ emptyEntity :: Entity
 emptyEntity = Entity (Obstacle 1) Neutral (0,0) (Movement (0,0) 0 0 (0,0) (-2) False)
 
 playerEntity :: Entity
-playerEntity = Entity (Shooter playerHealth ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 0 False)
+playerEntity = Entity (Shooter playerHealth ((0.5),0)) Player (30,30) (Movement (20, negate (y/2))  10 0 (0,0) 0 False)
   where y = fromIntegral screenHeight :: Float
 
 
@@ -136,7 +136,7 @@ enemyTypes :: [Entity]
 enemyTypes =    [genericEnemy, staticEnemy, aimingEnemy]
 
 genericEnemy :: Entity
-genericEnemy = Entity (Shooter 30 (0.8,0)) Enemy (15,15) (Movement (x, y/2) 5 0 0 True) 
+genericEnemy = Entity (Shooter 30 (0.8,0)) Enemy (15,15) (Movement (x, y/2) 5 0 (0,0) 0 True) 
   where
     x = fromIntegral screenWidth :: Float
     y = fromIntegral screenHeight :: Float

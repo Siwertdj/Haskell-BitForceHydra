@@ -293,7 +293,7 @@ handleCollision e1@(Entity (Bullet damage1) fac hbox (Movement loc speed angle d
 handleCollision e1 _ = e1
 
 destroyEntity :: Entity -> Entity
-destroyEntity (Entity etype fac hbox (Movement loc _ _ _ _)) = Entity (Destruction etype fac) Neutral hbox (Movement loc 0 0 (-2) False)
+destroyEntity (Entity etype fac hbox (Movement loc _ _ _ _ _)) = Entity (Destruction etype fac) Neutral hbox (Movement loc 0 0 (0,0) (-2) False)
 
 isDestroyed :: Entity -> Bool
 isDestroyed (Entity (Destruction _ _) _ _ _) = True
